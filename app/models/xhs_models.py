@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from app.database.db import Base
 
@@ -272,4 +272,132 @@ class XhsNoteDetailResponse(BaseModel):
 
 class NoteDetailRequest(BaseModel):
     req_info: Dict[str, Any]
-    req_body: XhsNoteDetailResponse 
+    req_body: XhsNoteDetailResponse
+
+
+class XhsCommentAtUserItem(BaseModel):
+    at_user_id: str
+    at_user_nickname: Optional[str] = None
+    at_user_home_page_url: Optional[str] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class XhsCommentSubItem(BaseModel):
+    comment_id: str
+    note_id: str
+    comment_user_id: str
+    comment_user_nickname: Optional[str] = None
+    comment_user_image: Optional[str] = None
+    comment_user_home_page_url: Optional[str] = None
+    comment_content: Optional[str] = None
+    comment_like_count: Optional[str] = None
+    comment_sub_comment_count: Optional[str] = None
+    comment_create_time: Optional[str] = None
+    comment_liked: Optional[bool] = False
+    comment_show_tags: Optional[List[str]] = None
+    comment_sub_comment_cursor: Optional[str] = None
+    comment_sub_comment_has_more: Optional[bool] = False
+    comment_at_users: Optional[List[XhsCommentAtUserItem]] = Field(default_factory=list)
+    comment_sub: Optional[List['XhsCommentSubItem']] = Field(default_factory=list)
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class XhsCommentItem(BaseModel):
+    comment_id: str
+    note_id: str
+    comment_user_id: str
+    comment_user_nickname: Optional[str] = None
+    comment_user_image: Optional[str] = None
+    comment_user_home_page_url: Optional[str] = None
+    comment_content: Optional[str] = None
+    comment_like_count: Optional[str] = None
+    comment_sub_comment_count: Optional[str] = None
+    comment_create_time: Optional[str] = None
+    comment_liked: Optional[bool] = False
+    comment_show_tags: Optional[List[str]] = None
+    comment_sub_comment_cursor: Optional[str] = None
+    comment_sub_comment_has_more: Optional[bool] = False
+    comment_at_users: Optional[List[XhsCommentAtUserItem]] = Field(default_factory=list)
+    comment_sub: Optional[List[XhsCommentSubItem]] = Field(default_factory=list)
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class XhsCommentsData(BaseModel):
+    comments: List[XhsCommentItem]
+    cursor: Optional[str] = None
+    has_more: Optional[bool] = False
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class XhsCommentsResponse(BaseModel):
+    data: XhsCommentsData
+    msg: str = ""
+    tips: Optional[str] = None
+    code: int = 0
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class CommentsRequest(BaseModel):
+    req_info: Dict[str, Any]
+    req_body: XhsCommentsResponse
+
+
+class XhsAutherInfo(BaseModel):
+    user_link_url: Optional[str] = None
+    desc: Optional[str] = None
+    interaction: Optional[str] = None
+    ip_location: Optional[str] = None
+    red_id: Optional[str] = None
+    user_id: str
+    tags: Optional[List[str]] = None
+    avatar: Optional[str] = None
+    fans: Optional[str] = None
+    follows: Optional[str] = None
+    gender: Optional[str] = None
+    nick_name: Optional[str] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class XhsAutherNotesData(BaseModel):
+    notes: List[XhsNoteItem]
+    auther_info: XhsAutherInfo
+    cursor: Optional[str] = None
+    has_more: Optional[bool] = False
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class XhsAutherNotesResponse(BaseModel):
+    data: XhsAutherNotesData
+    msg: str = ""
+    tips: Optional[str] = None
+    code: int = 0
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class AutherNotesRequest(BaseModel):
+    req_info: Dict[str, Any]
+    req_body: XhsAutherNotesResponse 

@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from app.models.xhs_models import (
     XhsAuther, XhsNote, XhsKeywordGroup, XhsKeywordGroupNote, 
-    XhsNoteItem, XhsSearchResponse, XhsNoteDetail
+    XhsNoteItem, XhsSearchResponse, XhsNoteDetail, XhsComment, XhsCommentAtUser
 )
 from datetime import datetime
 import json
@@ -33,7 +33,15 @@ class XhsDAO:
                     auther_user_id=auther_user_id,
                     auther_nick_name=auther_data.get("auther_nick_name"),
                     auther_avatar=auther_data.get("auther_avatar"),
-                    auther_home_page_url=auther_data.get("auther_home_page_url")
+                    auther_home_page_url=auther_data.get("auther_home_page_url"),
+                    auther_desc=auther_data.get("auther_desc"),
+                    auther_interaction=auther_data.get("auther_interaction"),
+                    auther_ip_location=auther_data.get("auther_ip_location"),
+                    auther_red_id=auther_data.get("auther_red_id"),
+                    auther_tags=auther_data.get("auther_tags"),
+                    auther_fans=auther_data.get("auther_fans"),
+                    auther_follows=auther_data.get("auther_follows"),
+                    auther_gender=auther_data.get("auther_gender")
                 )
                 db.add(auther)
                 db.flush()
@@ -44,6 +52,14 @@ class XhsDAO:
                 auther.auther_nick_name = auther_data.get("auther_nick_name", auther.auther_nick_name)
                 auther.auther_avatar = auther_data.get("auther_avatar", auther.auther_avatar)
                 auther.auther_home_page_url = auther_data.get("auther_home_page_url", auther.auther_home_page_url)
+                auther.auther_desc = auther_data.get("auther_desc", auther.auther_desc)
+                auther.auther_interaction = auther_data.get("auther_interaction", auther.auther_interaction)
+                auther.auther_ip_location = auther_data.get("auther_ip_location", auther.auther_ip_location)
+                auther.auther_red_id = auther_data.get("auther_red_id", auther.auther_red_id)
+                auther.auther_tags = auther_data.get("auther_tags", auther.auther_tags)
+                auther.auther_fans = auther_data.get("auther_fans", auther.auther_fans)
+                auther.auther_follows = auther_data.get("auther_follows", auther.auther_follows)
+                auther.auther_gender = auther_data.get("auther_gender", auther.auther_gender)
                 auther.updated_at = datetime.now()
                 print(f"作者信息更新成功: {auther_user_id}")
                 
@@ -451,7 +467,12 @@ class XhsDAO:
                 "note_id": str(note_data.note_id),
                 "auther_user_id": str(note_data.auther_user_id) if note_data.auther_user_id else "",
                 "note_url": str(note_data.note_url) if note_data.note_url else "",
+                "note_xsec_token": str(note_data.note_xsec_token) if hasattr(note_data, 'note_xsec_token') else "",
                 "note_display_title": str(note_data.note_display_title) if note_data.note_display_title else "",
+                "note_cover_url_pre": str(note_data.note_cover_url_pre) if hasattr(note_data, 'note_cover_url_pre') else "",
+                "note_cover_url_default": str(note_data.note_cover_url_default) if hasattr(note_data, 'note_cover_url_default') else "",
+                "note_cover_width": int(note_data.note_cover_width) if hasattr(note_data, 'note_cover_width') and str(note_data.note_cover_width).isdigit() else None,
+                "note_cover_height": int(note_data.note_cover_height) if hasattr(note_data, 'note_cover_height') and str(note_data.note_cover_height).isdigit() else None,
                 "note_liked_count": int(note_data.note_liked_count) if note_data.note_liked_count and str(note_data.note_liked_count).isdigit() else 0,
                 "note_liked": bool(note_data.note_liked) if note_data.note_liked is not None else False,
                 "note_card_type": str(note_data.note_card_type) if note_data.note_card_type else "",
@@ -494,24 +515,24 @@ class XhsDAO:
                 "auther_user_id": note.auther_user_id,
                 "note_last_update_time": note_last_update_time,
                 "note_create_time": note_create_time,
-                "note_model_type": note_data.note_model_type,
-                "note_card_type": note_data.note_card_type,
-                "note_display_title": note_data.note_display_title,
-                "note_desc": note_data.note_desc,
+                "note_model_type": str(note_data.note_model_type) if note_data.note_model_type else "",
+                "note_card_type": str(note_data.note_card_type) if note_data.note_card_type else "",
+                "note_display_title": str(note_data.note_display_title) if note_data.note_display_title else "",
+                "note_desc": str(note_data.note_desc) if note_data.note_desc else "",
                 "comment_count": int(note_data.comment_count) if note_data.comment_count and str(note_data.comment_count).isdigit() else 0,
                 "note_liked_count": int(note_data.note_liked_count) if note_data.note_liked_count and str(note_data.note_liked_count).isdigit() else 0,
                 "share_count": int(note_data.share_count) if note_data.share_count and str(note_data.share_count).isdigit() else 0,
                 "collected_count": int(note_data.collected_count) if note_data.collected_count and str(note_data.collected_count).isdigit() else 0,
-                "video_id": note_data.video_id,
-                "video_h266_url": note_data.video_h266_url,
-                "video_a1_url": note_data.video_a1_url,
-                "video_h264_url": note_data.video_h264_url,
-                "video_h265_url": note_data.video_h265_url,
+                "video_id": str(note_data.video_id) if note_data.video_id else None,
+                "video_h266_url": str(note_data.video_h266_url) if note_data.video_h266_url else None,
+                "video_a1_url": str(note_data.video_a1_url) if note_data.video_a1_url else None,
+                "video_h264_url": str(note_data.video_h264_url) if note_data.video_h264_url else None,
+                "video_h265_url": str(note_data.video_h265_url) if note_data.video_h265_url else None,
                 "note_duration": int(note_data.note_duration) if note_data.note_duration and str(note_data.note_duration).isdigit() else None,
-                "note_image_list": note_data.note_image_list,
-                "note_tags": note_data.note_tags,
-                "note_liked": note_data.note_liked,
-                "collected": note_data.collected
+                "note_image_list": json.dumps(note_data.note_image_list, ensure_ascii=False) if note_data.note_image_list else None,
+                "note_tags": json.dumps(note_data.note_tags, ensure_ascii=False) if note_data.note_tags else None,
+                "note_liked": bool(note_data.note_liked) if note_data.note_liked is not None else False,
+                "collected": bool(note_data.collected) if note_data.collected is not None else False
             }
             
             # 获取或更新笔记详情
@@ -564,4 +585,332 @@ class XhsDAO:
             db.rollback()
             error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
             logger.error(f"存储笔记详情过程中发生错误: {error_detail}")
+            raise 
+
+    @staticmethod
+    def store_comments(db: Session, req_info: Dict[str, Any], comments_response: 'XhsCommentsResponse') -> List[XhsComment]:
+        """存储评论数据，确保幂等性操作"""
+        logger = logging.getLogger(__name__)
+        
+        # 在开始前确保会话是干净的
+        db.rollback()
+        
+        try:
+            # 获取评论数据
+            comments_data = comments_response.data.comments
+            
+            if not comments_data:
+                logger.warning("请求体中缺少有效的评论数据")
+                return []
+                
+            logger.info(f"开始处理评论数据，共 {len(comments_data)} 条评论")
+            
+            # 收集所有评论ID和用户ID
+            comment_ids = []
+            user_ids = []
+            
+            for comment in comments_data:
+                comment_ids.append(comment.comment_id)
+                user_ids.append(comment.comment_user_id)
+                
+                # 收集子评论的ID和用户ID
+                for sub_comment in comment.comment_sub:
+                    comment_ids.append(sub_comment.comment_id)
+                    user_ids.append(sub_comment.comment_user_id)
+            
+            # 去重
+            comment_ids = list(set(comment_ids))
+            user_ids = list(set(user_ids))
+            
+            logger.info(f"共有 {len(comment_ids)} 条不重复评论，{len(user_ids)} 个不重复用户")
+            
+            # 查询已存在的评论
+            existing_comments = {
+                comment.comment_id: comment 
+                for comment in db.query(XhsComment).filter(XhsComment.comment_id.in_(comment_ids)).all()
+            }
+            
+            logger.info(f"找到 {len(existing_comments)} 条已存在的评论")
+            
+            # 处理关键词群组关联（如果有关键词）
+            keywords = req_info.get("keywords")
+            keyword_group = None
+            
+            if keywords:
+                try:
+                    # 确保关键词是列表
+                    if isinstance(keywords, str):
+                        keywords = [keywords]
+                    
+                    # 获取或创建关键词群组
+                    keyword_group = XhsDAO.get_or_create_keyword_group(db, keywords)
+                    logger.debug(f"关键词群组: {keywords}")
+                except Exception as e:
+                    logger.error(f"处理关键词关联时出错: {str(e)}")
+            
+            # 存储评论数据
+            stored_comments = []
+            
+            for comment_item in comments_data:
+                try:
+                    # 处理主评论
+                    comment = XhsDAO._process_comment(db, comment_item, existing_comments)
+                    
+                    # 处理@用户
+                    if comment_item.comment_at_users:
+                        for at_user in comment_item.comment_at_users:
+                            XhsDAO._process_comment_at_user(db, comment.comment_id, at_user)
+                    
+                    # 处理子评论
+                    if comment_item.comment_sub:
+                        for sub_comment_item in comment_item.comment_sub:
+                            sub_comment = XhsDAO._process_comment(db, sub_comment_item, existing_comments, parent_id=comment.comment_id)
+                            
+                            # 处理子评论的@用户
+                            if sub_comment_item.comment_at_users:
+                                for at_user in sub_comment_item.comment_at_users:
+                                    XhsDAO._process_comment_at_user(db, sub_comment.comment_id, at_user)
+                    
+                    # 关联评论与关键词群组
+                    if keyword_group and keyword_group.group_id > 0:
+                        try:
+                            # 先关联笔记与关键词群组
+                            XhsDAO.associate_note_with_keyword_group(db, comment.note_id, keyword_group.group_id)
+                            logger.debug(f"关联笔记 {comment.note_id} 与关键词群组 {keywords}")
+                        except Exception as e:
+                            logger.error(f"关联笔记与关键词群组时出错: {str(e)}")
+                    
+                    stored_comments.append(comment)
+                    
+                except Exception as e:
+                    logger.error(f"处理评论时出错 {comment_item.comment_id}: {str(e)}")
+                    continue
+            
+            # 提交事务
+            try:
+                db.flush()
+                db.commit()
+                logger.info(f"成功处理并存储 {len(stored_comments)} 条评论数据")
+            except Exception as e:
+                db.rollback()
+                error_detail = f"提交事务时出错: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
+                logger.error(error_detail)
+                logger.warning("由于事务提交错误，可能有部分数据未能成功存储")
+            
+            return stored_comments
+            
+        except Exception as e:
+            db.rollback()
+            error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
+            logger.error(f"存储评论过程中发生错误: {error_detail}")
+            raise
+    
+    @staticmethod
+    def _process_comment(db: Session, comment_item: 'XhsCommentItem', existing_comments: Dict[str, XhsComment], parent_id: Optional[str] = None) -> XhsComment:
+        """处理单条评论数据"""
+        logger = logging.getLogger(__name__)
+        
+        # 检查评论是否已存在
+        comment = existing_comments.get(comment_item.comment_id)
+        
+        # 转换评论创建时间
+        comment_create_time = None
+        if comment_item.comment_create_time:
+            try:
+                comment_create_time = datetime.strptime(comment_item.comment_create_time, "%Y-%m-%d %H:%M:%S")
+            except Exception as e:
+                logger.warning(f"解析评论创建时间出错: {str(e)}")
+                comment_create_time = datetime.now()
+        else:
+            comment_create_time = datetime.now()
+        
+        # 转换评论标签
+        comment_show_tags = None
+        if comment_item.comment_show_tags:
+            try:
+                comment_show_tags = json.dumps(comment_item.comment_show_tags)
+            except Exception as e:
+                logger.warning(f"转换评论标签出错: {str(e)}")
+        
+        if not comment:
+            # 创建新评论
+            comment = XhsComment(
+                comment_id=comment_item.comment_id,
+                note_id=comment_item.note_id,
+                parent_comment_id=parent_id,
+                comment_user_id=comment_item.comment_user_id,
+                comment_user_image=comment_item.comment_user_image,
+                comment_user_nickname=comment_item.comment_user_nickname,
+                comment_user_home_page_url=comment_item.comment_user_home_page_url,
+                comment_content=comment_item.comment_content,
+                comment_like_count=int(comment_item.comment_like_count) if comment_item.comment_like_count and str(comment_item.comment_like_count).isdigit() else 0,
+                comment_sub_comment_count=int(comment_item.comment_sub_comment_count) if comment_item.comment_sub_comment_count and str(comment_item.comment_sub_comment_count).isdigit() else 0,
+                comment_create_time=comment_create_time,
+                comment_liked=comment_item.comment_liked,
+                comment_show_tags=comment_show_tags,
+                comment_sub_comment_cursor=comment_item.comment_sub_comment_cursor,
+                comment_sub_comment_has_more=comment_item.comment_sub_comment_has_more
+            )
+            db.add(comment)
+            db.flush()
+            existing_comments[comment.comment_id] = comment
+            logger.debug(f"创建新评论: {comment.comment_id}")
+        else:
+            # 更新现有评论
+            comment.note_id = comment_item.note_id
+            comment.parent_comment_id = parent_id
+            comment.comment_user_id = comment_item.comment_user_id
+            comment.comment_user_image = comment_item.comment_user_image
+            comment.comment_user_nickname = comment_item.comment_user_nickname
+            comment.comment_user_home_page_url = comment_item.comment_user_home_page_url
+            comment.comment_content = comment_item.comment_content
+            comment.comment_like_count = int(comment_item.comment_like_count) if comment_item.comment_like_count and str(comment_item.comment_like_count).isdigit() else 0
+            comment.comment_sub_comment_count = int(comment_item.comment_sub_comment_count) if comment_item.comment_sub_comment_count and str(comment_item.comment_sub_comment_count).isdigit() else 0
+            comment.comment_create_time = comment_create_time
+            comment.comment_liked = comment_item.comment_liked
+            comment.comment_show_tags = comment_show_tags
+            comment.comment_sub_comment_cursor = comment_item.comment_sub_comment_cursor
+            comment.comment_sub_comment_has_more = comment_item.comment_sub_comment_has_more
+            comment.updated_at = datetime.now()
+            logger.debug(f"更新评论: {comment.comment_id}")
+        
+        return comment
+    
+    @staticmethod
+    def _process_comment_at_user(db: Session, comment_id: str, at_user_item: 'XhsCommentAtUserItem') -> XhsCommentAtUser:
+        """处理评论@用户数据"""
+        logger = logging.getLogger(__name__)
+        
+        # 检查@用户关系是否已存在
+        at_user = db.query(XhsCommentAtUser).filter(
+            XhsCommentAtUser.comment_id == comment_id,
+            XhsCommentAtUser.at_user_id == at_user_item.at_user_id
+        ).first()
+        
+        if not at_user:
+            # 创建新的@用户关系
+            at_user = XhsCommentAtUser(
+                comment_id=comment_id,
+                at_user_id=at_user_item.at_user_id,
+                at_user_nickname=at_user_item.at_user_nickname,
+                at_user_home_page_url=at_user_item.at_user_home_page_url
+            )
+            db.add(at_user)
+            db.flush()
+            logger.debug(f"创建新的@用户关系: {comment_id} -> {at_user_item.at_user_id}")
+        else:
+            # 更新现有@用户关系
+            at_user.at_user_nickname = at_user_item.at_user_nickname
+            at_user.at_user_home_page_url = at_user_item.at_user_home_page_url
+            logger.debug(f"更新@用户关系: {comment_id} -> {at_user_item.at_user_id}")
+        
+        return at_user 
+
+    @staticmethod
+    def store_auther_notes(db: Session, req_info: Dict[str, Any], auther_notes_response: 'XhsAutherNotesResponse') -> List[XhsNote]:
+        """存储作者笔记数据，确保幂等性操作"""
+        logger = logging.getLogger(__name__)
+        
+        # 在开始前确保会话是干净的
+        db.rollback()
+        
+        try:
+            # 获取作者信息和笔记数据
+            auther_info = auther_notes_response.data.auther_info
+            notes_data = auther_notes_response.data.notes
+            
+            if not auther_info or not auther_info.user_id:
+                logger.warning("请求体中缺少有效的作者信息")
+                return []
+                
+            logger.info(f"开始处理作者笔记数据，作者ID: {auther_info.user_id}, 笔记数量: {len(notes_data)}")
+            
+            # 处理作者信息
+            auther_data = {
+                "auther_user_id": str(auther_info.user_id),
+                "auther_nick_name": str(auther_info.nick_name) if auther_info.nick_name else "",
+                "auther_avatar": str(auther_info.avatar) if auther_info.avatar else "",
+                "auther_home_page_url": str(auther_info.user_link_url) if auther_info.user_link_url else "",
+                "auther_desc": str(auther_info.desc) if auther_info.desc else "",
+                "auther_interaction": int(auther_info.interaction) if auther_info.interaction and str(auther_info.interaction).isdigit() else 0,
+                "auther_ip_location": str(auther_info.ip_location) if auther_info.ip_location else None,
+                "auther_red_id": str(auther_info.red_id) if auther_info.red_id else None,
+                "auther_tags": json.dumps(auther_info.tags, ensure_ascii=False) if auther_info.tags else None,
+                "auther_fans": int(auther_info.fans) if auther_info.fans and str(auther_info.fans).isdigit() else 0,
+                "auther_follows": int(auther_info.follows) if auther_info.follows and str(auther_info.follows).isdigit() else 0,
+                "auther_gender": str(auther_info.gender) if auther_info.gender else None
+            }
+            
+            # 获取或更新作者
+            auther = XhsDAO.get_or_create_auther(db, auther_data)
+            
+            # 处理笔记数据
+            stored_notes = []
+            
+            for note_item in notes_data:
+                try:
+                    # 准备笔记数据
+                    note_data = {
+                        "note_id": str(note_item.note_id),
+                        "auther_user_id": str(auther_info.user_id),
+                        "note_url": str(note_item.note_url) if note_item.note_url else "",
+                        "note_xsec_token": str(note_item.note_xsec_token) if note_item.note_xsec_token else "",
+                        "note_display_title": str(note_item.note_display_title) if note_item.note_display_title else "",
+                        "note_cover_url_pre": str(note_item.note_cover_url_pre) if note_item.note_cover_url_pre else "",
+                        "note_cover_url_default": str(note_item.note_cover_url_default) if note_item.note_cover_url_default else "",
+                        "note_cover_width": int(note_item.note_cover_width) if note_item.note_cover_width and str(note_item.note_cover_width).isdigit() else None,
+                        "note_cover_height": int(note_item.note_cover_height) if note_item.note_cover_height and str(note_item.note_cover_height).isdigit() else None,
+                        "note_liked_count": int(note_item.note_liked_count) if note_item.note_liked_count and str(note_item.note_liked_count).isdigit() else 0,
+                        "note_liked": bool(note_item.note_liked) if note_item.note_liked is not None else False,
+                        "note_card_type": str(note_item.note_card_type) if note_item.note_card_type else "",
+                        "note_model_type": str(note_item.note_model_type) if note_item.note_model_type else "",
+                        "auther_nick_name": str(auther_info.nick_name) if auther_info.nick_name else "",
+                        "auther_avatar": str(auther_info.avatar) if auther_info.avatar else "",
+                        "auther_home_page_url": str(auther_info.user_link_url) if auther_info.user_link_url else ""
+                    }
+                    
+                    # 获取或更新笔记
+                    note = XhsDAO.get_or_create_note(db, note_data)
+                    stored_notes.append(note)
+                    
+                except Exception as e:
+                    logger.error(f"处理笔记时出错 {note_item.note_id}: {str(e)}")
+                    continue
+            
+            # 处理关键词群组关联（如果有关键词）
+            keywords = req_info.get("keywords")
+            if keywords:
+                try:
+                    # 确保关键词是列表
+                    if isinstance(keywords, str):
+                        keywords = [keywords]
+                    
+                    # 获取或创建关键词群组
+                    keyword_group = XhsDAO.get_or_create_keyword_group(db, keywords)
+                    
+                    # 关联笔记与关键词群组
+                    if keyword_group and keyword_group.group_id > 0:
+                        for note in stored_notes:
+                            XhsDAO.associate_note_with_keyword_group(db, note.note_id, keyword_group.group_id)
+                        logger.debug(f"关联 {len(stored_notes)} 条笔记与关键词群组 {keywords}")
+                except Exception as e:
+                    logger.error(f"处理关键词关联时出错: {str(e)}")
+            
+            # 提交事务
+            try:
+                db.flush()
+                db.commit()
+                logger.info(f"成功处理并存储作者笔记数据，作者ID: {auther_info.user_id}, 存储笔记数: {len(stored_notes)}")
+                return stored_notes
+            except Exception as e:
+                db.rollback()
+                error_detail = f"提交事务时出错: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
+                logger.error(error_detail)
+                logger.warning("由于事务提交错误，可能有部分数据未能成功存储")
+                return []
+                
+        except Exception as e:
+            db.rollback()
+            error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
+            logger.error(f"存储作者笔记过程中发生错误: {error_detail}")
             raise 
