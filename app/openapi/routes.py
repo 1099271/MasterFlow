@@ -1,0 +1,99 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import Dict, Any, List
+import logging
+
+from app.database.db import get_db
+from app.models.xhs_models import SearchNoteRequest, XhsSearchResponse, XhsNoteItem
+from app.models.xhs_dao import XhsDAO
+from app.utils.response import ResponseBase, handle_error
+
+# 配置日志
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["OpenAPI"])
+
+@router.post("/xhs_search_note", response_model=Dict[str, Any], summary="小红书笔记搜索结果存储")
+async def xhs_search_note(
+    request: SearchNoteRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    存储小红书笔记搜索结果
+    
+    **参数**:
+    - req_info: 请求信息，包含搜索关键词等信息
+    - req_body: 搜索结果数据，包含笔记列表
+    
+    **返回**:
+    - 操作结果信息
+    """
+    # 确保数据库会话是干净的
+    db.rollback()
+    
+    try:
+        # 记录请求信息
+        logger.info(f"接收到搜索结果存储请求，关键词: {request.req_info.get('keywords', '')}")
+        
+        # 验证请求体
+        if not request.req_body or not request.req_body.data:
+            logger.warning("请求体中缺少有效的搜索结果数据")
+            return ResponseBase.error(
+                code=400,
+                msg="未提供有效的搜索结果数据"
+            )
+        
+        # 验证数据类型
+        try:
+            # 检查关键字段的数据类型
+            for note in request.req_body.data:
+                # 确保数值字段可以被正确转换
+                if note.note_cover_width and not str(note.note_cover_width).isdigit():
+                    logger.warning(f"笔记 {note.note_id} 的封面宽度不是有效的数字: {note.note_cover_width}")
+                    note.note_cover_width = None
+                
+                if note.note_cover_height and not str(note.note_cover_height).isdigit():
+                    logger.warning(f"笔记 {note.note_id} 的封面高度不是有效的数字: {note.note_cover_height}")
+                    note.note_cover_height = None
+                
+                if note.note_liked_count and not str(note.note_liked_count).isdigit():
+                    logger.warning(f"笔记 {note.note_id} 的点赞数不是有效的数字: {note.note_liked_count}")
+                    note.note_liked_count = "0"
+        except Exception as e:
+            logger.warning(f"数据类型验证过程中出现错误: {str(e)}")
+            # 继续处理，让后续代码处理这些错误
+        
+        # 存储搜索结果
+        try:
+            stored_notes = XhsDAO.store_search_results(db, request.req_info, request.req_body)
+            
+            # 记录成功信息
+            logger.info(f"成功存储 {len(stored_notes)} 条笔记数据")
+            
+            # 返回结果
+            return ResponseBase.success(
+                msg="数据存储成功",
+                data={
+                    "stored_count": len(stored_notes),
+                    "note_ids": [note.note_id for note in stored_notes]
+                }
+            )
+        except Exception as e:
+            # 处理存储过程中的错误
+            handle_error(e, "存储小红书笔记数据")
+            
+            # 返回错误响应
+            return ResponseBase.error(
+                code=500,
+                msg=f"执行存储小红书笔记数据时发生错误: {str(e)}"
+            )
+        
+    except Exception as e:
+        # 统一错误处理
+        handle_error(e, "处理小红书笔记搜索请求")
+        
+        # 返回统一的错误响应
+        return ResponseBase.error(
+            code=500,
+            msg=f"处理小红书笔记搜索请求时发生错误: {str(e)}"
+        ) 
