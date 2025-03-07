@@ -407,4 +407,161 @@ class XhsDAO:
             logger.error(f"存储过程中发生错误: {error_detail}")
             raise
         
-        return stored_notes 
+        return stored_notes
+
+    @staticmethod
+    def store_note_detail(db: Session, req_info: Dict[str, Any], note_detail_response: 'XhsNoteDetailResponse') -> XhsNote:
+        """存储笔记详情数据，确保幂等性操作"""
+        logger = logging.getLogger(__name__)
+        
+        # 在开始前确保会话是干净的
+        db.rollback()
+        
+        try:
+            # 获取笔记详情数据
+            note_data = note_detail_response.data.note
+            
+            if not note_data or not note_data.note_id:
+                logger.warning("请求体中缺少有效的笔记详情数据")
+                return None
+                
+            logger.info(f"开始处理笔记详情数据，笔记ID: {note_data.note_id}")
+            
+            # 处理作者信息
+            auther_data = {
+                "auther_user_id": str(note_data.auther_user_id) if note_data.auther_user_id else "",
+                "auther_nick_name": str(note_data.auther_nick_name) if note_data.auther_nick_name else "",
+                "auther_avatar": str(note_data.auther_avatar) if note_data.auther_avatar else "",
+                "auther_home_page_url": str(note_data.auther_home_page_url) if note_data.auther_home_page_url else "",
+                "auther_desc": '',  # 添加默认值
+                "auther_interaction": 0,  # 根据数据库结构设置默认值为0
+                "auther_ip_location": None,
+                "auther_red_id": None,
+                "auther_tags": None,
+                "auther_fans": 0,
+                "auther_follows": 0,
+                "auther_gender": None
+            }
+            
+            # 获取或更新作者
+            auther = XhsDAO.get_or_create_auther(db, auther_data)
+            
+            # 准备笔记基本数据
+            note_basic_data = {
+                "note_id": str(note_data.note_id),
+                "auther_user_id": str(note_data.auther_user_id) if note_data.auther_user_id else "",
+                "note_url": str(note_data.note_url) if note_data.note_url else "",
+                "note_display_title": str(note_data.note_display_title) if note_data.note_display_title else "",
+                "note_liked_count": int(note_data.note_liked_count) if note_data.note_liked_count and str(note_data.note_liked_count).isdigit() else 0,
+                "note_liked": bool(note_data.note_liked) if note_data.note_liked is not None else False,
+                "note_card_type": str(note_data.note_card_type) if note_data.note_card_type else "",
+                "note_model_type": str(note_data.note_model_type) if note_data.note_model_type else "",
+                "auther_nick_name": str(note_data.auther_nick_name) if note_data.auther_nick_name else "",
+                "auther_avatar": str(note_data.auther_avatar) if note_data.auther_avatar else "",
+                "auther_home_page_url": str(note_data.auther_home_page_url) if note_data.auther_home_page_url else ""
+            }
+            
+            # 获取或更新笔记基本信息
+            note = XhsDAO.get_or_create_note(db, note_basic_data)
+            
+            # 处理笔记详情数据
+            # 转换日期时间字符串为datetime对象
+            note_create_time = None
+            note_last_update_time = None
+            
+            if note_data.note_create_time:
+                try:
+                    note_create_time = datetime.strptime(note_data.note_create_time, "%Y-%m-%d %H:%M:%S")
+                except Exception as e:
+                    logger.warning(f"解析笔记创建时间出错: {str(e)}")
+                    note_create_time = datetime.now()
+            else:
+                note_create_time = datetime.now()
+                
+            if note_data.note_last_update_time:
+                try:
+                    note_last_update_time = datetime.strptime(note_data.note_last_update_time, "%Y-%m-%d %H:%M:%S")
+                except Exception as e:
+                    logger.warning(f"解析笔记更新时间出错: {str(e)}")
+                    note_last_update_time = datetime.now()
+            else:
+                note_last_update_time = datetime.now()
+            
+            # 准备笔记详情数据
+            note_detail_data = {
+                "note_id": note.note_id,
+                "note_url": note.note_url,
+                "auther_user_id": note.auther_user_id,
+                "note_last_update_time": note_last_update_time,
+                "note_create_time": note_create_time,
+                "note_model_type": note_data.note_model_type,
+                "note_card_type": note_data.note_card_type,
+                "note_display_title": note_data.note_display_title,
+                "note_desc": note_data.note_desc,
+                "comment_count": int(note_data.comment_count) if note_data.comment_count and str(note_data.comment_count).isdigit() else 0,
+                "note_liked_count": int(note_data.note_liked_count) if note_data.note_liked_count and str(note_data.note_liked_count).isdigit() else 0,
+                "share_count": int(note_data.share_count) if note_data.share_count and str(note_data.share_count).isdigit() else 0,
+                "collected_count": int(note_data.collected_count) if note_data.collected_count and str(note_data.collected_count).isdigit() else 0,
+                "video_id": note_data.video_id,
+                "video_h266_url": note_data.video_h266_url,
+                "video_a1_url": note_data.video_a1_url,
+                "video_h264_url": note_data.video_h264_url,
+                "video_h265_url": note_data.video_h265_url,
+                "note_duration": int(note_data.note_duration) if note_data.note_duration and str(note_data.note_duration).isdigit() else None,
+                "note_image_list": note_data.note_image_list,
+                "note_tags": note_data.note_tags,
+                "note_liked": note_data.note_liked,
+                "collected": note_data.collected
+            }
+            
+            # 获取或更新笔记详情
+            note_detail = db.query(XhsNoteDetail).filter(XhsNoteDetail.note_id == note.note_id).first()
+            if note_detail:
+                # 更新现有笔记详情
+                for key, value in note_detail_data.items():
+                    if hasattr(note_detail, key):
+                        setattr(note_detail, key, value)
+                note_detail.updated_at = datetime.now()
+                logger.debug(f"更新笔记详情: {note_detail.note_id}")
+            else:
+                # 创建新笔记详情
+                note_detail = XhsNoteDetail(**note_detail_data)
+                db.add(note_detail)
+                logger.debug(f"创建新笔记详情: {note_detail.note_id}")
+            
+            # 处理关键词群组关联（如果有关键词）
+            keywords = req_info.get("keywords")
+            if keywords:
+                try:
+                    # 确保关键词是列表
+                    if isinstance(keywords, str):
+                        keywords = [keywords]
+                    
+                    # 获取或创建关键词群组
+                    keyword_group = XhsDAO.get_or_create_keyword_group(db, keywords)
+                    
+                    # 关联笔记与关键词群组
+                    if keyword_group and keyword_group.group_id > 0:
+                        XhsDAO.associate_note_with_keyword_group(db, note.note_id, keyword_group.group_id)
+                        logger.debug(f"关联笔记 {note.note_id} 与关键词群组 {keywords}")
+                except Exception as e:
+                    logger.error(f"处理关键词关联时出错: {str(e)}")
+            
+            # 提交事务
+            try:
+                db.flush()
+                db.commit()
+                logger.info(f"成功处理并存储笔记详情数据，笔记ID: {note.note_id}")
+                return note
+            except Exception as e:
+                db.rollback()
+                error_detail = f"提交事务时出错: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
+                logger.error(error_detail)
+                logger.warning("由于事务提交错误，可能有部分数据未能成功存储")
+                return None
+                
+        except Exception as e:
+            db.rollback()
+            error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
+            logger.error(f"存储笔记详情过程中发生错误: {error_detail}")
+            raise 

@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 import logging
 
 from app.database.db import get_db
-from app.models.xhs_models import SearchNoteRequest, XhsSearchResponse, XhsNoteItem
+from app.models.xhs_models import SearchNoteRequest, XhsSearchResponse, XhsNoteItem, NoteDetailRequest, XhsNoteDetailResponse
 from app.models.xhs_dao import XhsDAO
 from app.utils.response import ResponseBase, handle_error
 
@@ -96,4 +96,78 @@ async def xhs_search_note(
         return ResponseBase.error(
             code=500,
             msg=f"处理小红书笔记搜索请求时发生错误: {str(e)}"
+        )
+
+@router.post("/xhs_note_detail", response_model=Dict[str, Any], summary="小红书笔记详情存储")
+async def xhs_note_detail(
+    request: NoteDetailRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    存储小红书笔记详情
+    
+    **参数**:
+    - req_info: 请求信息，包含笔记URL和关键词等信息
+    - req_body: 笔记详情数据，包含笔记详细信息
+    
+    **返回**:
+    - 操作结果信息
+    """
+    # 确保数据库会话是干净的
+    db.rollback()
+    
+    try:
+        # 记录请求信息
+        note_url = request.req_info.get('noteUrl', '')
+        keywords = request.req_info.get('keywords', '')
+        logger.info(f"接收到笔记详情存储请求，笔记URL: {note_url}, 关键词: {keywords}")
+        
+        # 验证请求体
+        if not request.req_body or not request.req_body.data or not request.req_body.data.note or not request.req_body.data.note.note_id:
+            logger.warning("请求体中缺少有效的笔记详情数据")
+            return ResponseBase.error(
+                code=400,
+                msg="未提供有效的笔记详情数据"
+            )
+        
+        # 存储笔记详情
+        try:
+            stored_note = XhsDAO.store_note_detail(db, request.req_info, request.req_body)
+            
+            if stored_note:
+                # 记录成功信息
+                logger.info(f"成功存储笔记详情数据，笔记ID: {stored_note.note_id}")
+                
+                # 返回结果
+                return ResponseBase.success(
+                    msg="笔记详情数据存储成功",
+                    data={
+                        "note_id": stored_note.note_id,
+                        "note_url": stored_note.note_url,
+                        "note_display_title": stored_note.note_display_title
+                    }
+                )
+            else:
+                return ResponseBase.error(
+                    code=500,
+                    msg="存储笔记详情数据失败"
+                )
+        except Exception as e:
+            # 处理存储过程中的错误
+            handle_error(e, "存储小红书笔记详情数据")
+            
+            # 返回错误响应
+            return ResponseBase.error(
+                code=500,
+                msg=f"执行存储小红书笔记详情数据时发生错误: {str(e)}"
+            )
+        
+    except Exception as e:
+        # 统一错误处理
+        handle_error(e, "处理小红书笔记详情请求")
+        
+        # 返回统一的错误响应
+        return ResponseBase.error(
+            code=500,
+            msg=f"处理小红书笔记详情请求时发生错误: {str(e)}"
         ) 

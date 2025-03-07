@@ -215,4 +215,61 @@ class XhsSearchResponse(BaseModel):
 
 class SearchNoteRequest(BaseModel):
     req_info: Dict[str, Any]
-    req_body: XhsSearchResponse 
+    req_body: XhsSearchResponse
+
+
+class XhsNoteDetailItem(BaseModel):
+    note_last_update_time: Optional[str] = None
+    note_model_type: Optional[str] = None
+    video_h266_url: Optional[str] = None
+    auther_avatar: Optional[str] = None
+    note_card_type: Optional[str] = None
+    note_desc: Optional[str] = None
+    comment_count: Optional[str] = None
+    note_liked_count: Optional[str] = None
+    share_count: Optional[str] = None
+    video_a1_url: Optional[str] = None
+    auther_home_page_url: Optional[str] = None
+    auther_user_id: Optional[str] = None
+    collected_count: Optional[str] = None
+    note_url: Optional[str] = None
+    video_id: Optional[str] = None
+    note_create_time: Optional[str] = None
+    note_display_title: Optional[str] = None
+    note_image_list: Optional[List[str]] = None
+    note_tags: Optional[List[str]] = None
+    video_h264_url: Optional[str] = None
+    video_h265_url: Optional[str] = None
+    auther_nick_name: Optional[str] = None
+    note_duration: Optional[str] = None
+    note_id: str
+    note_liked: Optional[bool] = None
+    collected: Optional[bool] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class XhsNoteDetailData(BaseModel):
+    note: XhsNoteDetailItem
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class XhsNoteDetailResponse(BaseModel):
+    data: XhsNoteDetailData
+    msg: str = ""
+    tips: Optional[str] = None
+    code: int = 0
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class NoteDetailRequest(BaseModel):
+    req_info: Dict[str, Any]
+    req_body: XhsNoteDetailResponse 
