@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from app.models.xhs_models import (
     XhsAuther, XhsNote, XhsKeywordGroup, XhsKeywordGroupNote, 
-    XhsNoteItem, XhsSearchResponse, XhsNoteDetail, XhsComment, XhsCommentAtUser
+    XhsNoteItem, XhsSearchResponse, XhsNoteDetail, XhsComment, XhsCommentAtUser,
+    XhsTopicDiscussion, XhsTopicsResponse
 )
 from datetime import datetime
 import json
@@ -124,34 +125,24 @@ class XhsDAO:
         return note
     
     @staticmethod
-    def get_or_create_keyword_group(db: Session, keywords: List[str], group_name: Optional[str] = None) -> XhsKeywordGroup:
+    def get_or_create_keyword_group(db: Session, keywords: str, group_name: Optional[str] = None) -> XhsKeywordGroup:
         """获取或创建关键词群组"""
         logger = logging.getLogger(__name__)
-        
-        # 确保keywords是字符串列表且不为空
-        keywords = [str(k) for k in keywords if k]
-        if not keywords:
-            # 如果关键词为空，添加一个默认值避免空主键
-            keywords = ["default"]
-            logger.warning("关键词列表为空，使用默认关键词'default'")
-        
-        # 关键词列表为JSON字符串
-        keywords_json = json.dumps(keywords, ensure_ascii=False)
         
         try:
             # 尝试查找关键词群组（精确匹配关键词列表）
             keyword_group = db.query(XhsKeywordGroup).filter(
-                XhsKeywordGroup.keywords == keywords_json
+                XhsKeywordGroup.keywords == keywords
             ).first()
             
             # 如果关键词群组不存在，创建新的关键词群组
             if not keyword_group:
                 # 生成唯一的群组名称
-                unique_group_name = group_name or f"关键词群组-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
+                unique_group_name = group_name or f"关键词群组-{uuid.uuid4().hex[:8]}"
                 
                 keyword_group = XhsKeywordGroup(
                     group_name=unique_group_name,
-                    keywords=keywords_json  # 使用JSON字符串而不是原始列表
+                    keywords=keywords  # 使用JSON字符串而不是原始列表
                 )
                 db.add(keyword_group)
                 db.flush()
@@ -168,7 +159,7 @@ class XhsDAO:
             temp_group = XhsKeywordGroup(
                 group_id=-1,  # 使用一个不可能的ID
                 group_name="临时关键词群组",
-                keywords=keywords_json
+                keywords=keywords
             )
             return temp_group
     
@@ -251,7 +242,7 @@ class XhsDAO:
             keywords = [req_info.get("keywords")] if req_info.get("keywords") else []
             if keywords:
                 # 确保关键词是字符串
-                keywords = [str(k) for k in keywords if k]
+                # keywords = [str(k) for k in keywords if k]
                 try:
                     keyword_group = XhsDAO.get_or_create_keyword_group(db, keywords)
                     
@@ -550,24 +541,6 @@ class XhsDAO:
                 db.add(note_detail)
                 logger.debug(f"创建新笔记详情: {note_detail.note_id}")
             
-            # 处理关键词群组关联（如果有关键词）
-            keywords = req_info.get("keywords")
-            if keywords:
-                try:
-                    # 确保关键词是列表
-                    if isinstance(keywords, str):
-                        keywords = [keywords]
-                    
-                    # 获取或创建关键词群组
-                    keyword_group = XhsDAO.get_or_create_keyword_group(db, keywords)
-                    
-                    # 关联笔记与关键词群组
-                    if keyword_group and keyword_group.group_id > 0:
-                        XhsDAO.associate_note_with_keyword_group(db, note.note_id, keyword_group.group_id)
-                        logger.debug(f"关联笔记 {note.note_id} 与关键词群组 {keywords}")
-                except Exception as e:
-                    logger.error(f"处理关键词关联时出错: {str(e)}")
-            
             # 提交事务
             try:
                 db.flush()
@@ -631,22 +604,6 @@ class XhsDAO:
             }
             
             logger.info(f"找到 {len(existing_comments)} 条已存在的评论")
-            
-            # 处理关键词群组关联（如果有关键词）
-            keywords = req_info.get("keywords")
-            keyword_group = None
-            
-            if keywords:
-                try:
-                    # 确保关键词是列表
-                    if isinstance(keywords, str):
-                        keywords = [keywords]
-                    
-                    # 获取或创建关键词群组
-                    keyword_group = XhsDAO.get_or_create_keyword_group(db, keywords)
-                    logger.debug(f"关键词群组: {keywords}")
-                except Exception as e:
-                    logger.error(f"处理关键词关联时出错: {str(e)}")
             
             # 存储评论数据
             stored_comments = []
@@ -877,25 +834,6 @@ class XhsDAO:
                     logger.error(f"处理笔记时出错 {note_item.note_id}: {str(e)}")
                     continue
             
-            # 处理关键词群组关联（如果有关键词）
-            keywords = req_info.get("keywords")
-            if keywords:
-                try:
-                    # 确保关键词是列表
-                    if isinstance(keywords, str):
-                        keywords = [keywords]
-                    
-                    # 获取或创建关键词群组
-                    keyword_group = XhsDAO.get_or_create_keyword_group(db, keywords)
-                    
-                    # 关联笔记与关键词群组
-                    if keyword_group and keyword_group.group_id > 0:
-                        for note in stored_notes:
-                            XhsDAO.associate_note_with_keyword_group(db, note.note_id, keyword_group.group_id)
-                        logger.debug(f"关联 {len(stored_notes)} 条笔记与关键词群组 {keywords}")
-                except Exception as e:
-                    logger.error(f"处理关键词关联时出错: {str(e)}")
-            
             # 提交事务
             try:
                 db.flush()
@@ -914,3 +852,95 @@ class XhsDAO:
             error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
             logger.error(f"存储作者笔记过程中发生错误: {error_detail}")
             raise 
+
+    @staticmethod
+    def store_topics(db: Session, topics_response: XhsTopicsResponse) -> List[XhsTopicDiscussion]:
+        """存储话题数据，确保幂等性操作"""
+        logger = logging.getLogger(__name__)
+        
+        # 在开始前确保会话是干净的
+        db.rollback()
+        
+        try:
+            # 获取话题数据
+            topics_data = topics_response.data.topic_list
+            
+            if not topics_data:
+                logger.warning("请求体中缺少有效的话题数据")
+                return []
+            
+            logger.info(f"开始处理话题数据，共 {len(topics_data)} 个话题")
+            
+            # 获取当前日期（只保留到日期部分）
+            current_date = datetime.now().date()
+            
+            # 收集所有话题名称
+            topic_names = [topic.name for topic in topics_data]
+            
+            # 查询当天已存在的话题记录
+            existing_topics = {
+                (topic.topic_name, topic.record_date): topic
+                for topic in db.query(XhsTopicDiscussion).filter(
+                    XhsTopicDiscussion.topic_name.in_(topic_names),
+                    XhsTopicDiscussion.record_date == current_date
+                ).all()
+            }
+            
+            logger.info(f"找到 {len(existing_topics)} 条当天已存在的话题记录")
+            
+            # 存储话题数据
+            stored_topics = []
+            
+            for topic_item in topics_data:
+                try:
+                    # 转换浏览量为整数
+                    view_num = int(topic_item.view_num) if topic_item.view_num.isdigit() else 0
+                    
+                    # 转换smart为布尔值
+                    smart = topic_item.smart.lower() == "true"
+                    
+                    # 检查是否存在当天的记录
+                    existing_topic = existing_topics.get((topic_item.name, current_date))
+                    
+                    if existing_topic:
+                        # 更新现有记录
+                        existing_topic.topic_type = topic_item.type
+                        existing_topic.view_num = view_num
+                        existing_topic.smart = smart
+                        logger.debug(f"更新话题记录: {topic_item.name}")
+                        stored_topics.append(existing_topic)
+                    else:
+                        # 创建新记录
+                        new_topic = XhsTopicDiscussion(
+                            topic_name=topic_item.name,
+                            topic_type=topic_item.type,
+                            view_num=view_num,
+                            smart=smart,
+                            record_date=current_date
+                        )
+                        db.add(new_topic)
+                        stored_topics.append(new_topic)
+                        logger.debug(f"创建新话题记录: {topic_item.name}")
+                
+                except Exception as e:
+                    logger.error(f"处理话题时出错 {topic_item.name}: {str(e)}")
+                    continue
+            
+            # 提交事务
+            try:
+                db.flush()
+                db.commit()
+                logger.info(f"成功处理并存储 {len(stored_topics)} 条话题数据")
+                return stored_topics
+            except Exception as e:
+                db.rollback()
+                error_detail = f"提交事务时出错: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
+                logger.error(error_detail)
+                logger.warning("由于事务提交错误，可能有部分数据未能成功存储")
+                return []
+                
+        except Exception as e:
+            db.rollback()
+            error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
+            logger.error(f"存储话题过程中发生错误: {error_detail}")
+            raise

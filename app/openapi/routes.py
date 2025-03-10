@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 
 from app.database.db import get_db
-from app.models.xhs_models import SearchNoteRequest, XhsSearchResponse, XhsNoteItem, NoteDetailRequest, XhsNoteDetailResponse, CommentsRequest, XhsCommentsResponse, AutherNotesRequest
+from app.models.xhs_models import SearchNoteRequest, XhsSearchResponse, XhsNoteItem, NoteDetailRequest, XhsNoteDetailResponse, CommentsRequest, XhsCommentsResponse, AutherNotesRequest, TopicsRequest
 from app.models.xhs_dao import XhsDAO
 from app.utils.response import ResponseBase, handle_error
 
@@ -13,6 +13,78 @@ from app.utils.response import ResponseBase, handle_error
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["OpenAPI"])
+
+@router.post("/xhs_topics", response_model=Dict[str, Any], summary="小红书话题数据存储")
+async def xhs_topics(
+    request: TopicsRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    存储小红书话题数据
+    
+    **参数**:
+    - req_info: 请求信息，包含关键词等信息
+    - req_body: 话题数据，包含话题列表
+    
+    **返回**:
+    - 操作结果信息
+    """
+    # 确保数据库会话是干净的
+    db.rollback()
+    
+    try:
+        # 记录请求信息
+        keyword = request.req_info.get('keyword', '')
+        logger.info(f"接收到话题数据存储请求，关键词: {keyword}")
+        
+        # 验证请求体
+        if not request.req_body or not request.req_body.data or not request.req_body.data.topic_list:
+            logger.warning("请求体中缺少有效的话题数据")
+            return ResponseBase.error(
+                code=400,
+                msg="未提供有效的话题数据"
+            )
+        
+        # 存储话题数据
+        try:
+            stored_topics = XhsDAO.store_topics(db, request.req_body)
+            
+            if stored_topics:
+                # 记录成功信息
+                logger.info(f"成功存储话题数据，共 {len(stored_topics)} 个话题")
+                
+                # 返回结果
+                return ResponseBase.success(
+                    msg="话题数据存储成功",
+                    data={
+                        "stored_count": len(stored_topics),
+                        "topic_names": [topic.topic_name for topic in stored_topics]
+                    }
+                )
+            else:
+                return ResponseBase.error(
+                    code=500,
+                    msg="存储话题数据失败"
+                )
+        except Exception as e:
+            # 处理存储过程中的错误
+            handle_error(e, "存储小红书话题数据")
+            
+            # 返回错误响应
+            return ResponseBase.error(
+                code=500,
+                msg=f"执行存储小红书话题数据时发生错误: {str(e)}"
+            )
+        
+    except Exception as e:
+        # 统一错误处理
+        handle_error(e, "处理小红书话题请求")
+        
+        # 返回统一的错误响应
+        return ResponseBase.error(
+            code=500,
+            msg=f"处理小红书话题请求时发生错误: {str(e)}"
+        )
 
 @router.post("/xhs_search_note", response_model=Dict[str, Any], summary="小红书笔记搜索结果存储")
 async def xhs_search_note(
