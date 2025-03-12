@@ -97,7 +97,7 @@ class XhsService:
                 return None, {}
                 
             # 替换中文逗号为英文逗号
-            data_json = json.loads(result["data"].replace('，', ','))
+            data_json = json.loads(result["data"])
             
             # 检查resp_data字段
             if "resp_data" in data_json:

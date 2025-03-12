@@ -846,7 +846,7 @@ class XhsDAO:
             raise 
 
     @staticmethod
-    def store_topics(db: Session, topics_response: XhsTopicsResponse) -> List[XhsTopicDiscussion]:
+    def store_topics(db: Session, req_info: Dict[str, Any], topics_response: XhsTopicsResponse) -> List[XhsTopicDiscussion]:
         """存储话题数据，确保幂等性操作"""
         logger = logging.getLogger(__name__)
         

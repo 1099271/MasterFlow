@@ -47,7 +47,7 @@ async def xhs_topics(
         
         # 存储话题数据
         try:
-            stored_topics = XhsDAO.store_topics(db, request.req_body)
+            stored_topics = XhsDAO.store_topics(db, request.req_info, request.req_body)
             
             if stored_topics:
                 # 记录成功信息
