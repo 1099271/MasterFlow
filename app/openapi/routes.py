@@ -192,8 +192,7 @@ async def xhs_note_detail(
     try:
         # 记录请求信息
         note_url = request.req_info.get('noteUrl', '')
-        keywords = request.req_info.get('keywords', '')
-        logger.info(f"接收到笔记详情存储请求，笔记URL: {note_url}, 关键词: {keywords}")
+        logger.info(f"接收到笔记详情存储请求，笔记URL: {note_url}")
         
         # 验证请求体
         if not request.req_body or not request.req_body.data or not request.req_body.data.note or not request.req_body.data.note.note_id:
@@ -266,9 +265,8 @@ async def xhs_comments(
     try:
         # 记录请求信息
         note_url = request.req_info.get('noteUrl', '')
-        keywords = request.req_info.get('keywords', '')
         total_number = request.req_info.get('totalNumber', 0)
-        logger.info(f"接收到评论数据存储请求，笔记URL: {note_url}, 关键词: {keywords}, 总数: {total_number}")
+        logger.info(f"接收到评论数据存储请求，笔记URL: {note_url}, 总数: {total_number}")
         
         # 验证请求体
         if not request.req_body or not request.req_body.data or not request.req_body.data.comments:

@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 
 from app.config.settings import settings
 from app.models.xhs_dao import XhsDAO
-from app.models.xhs_models import XhsSearchResponse, XhsNote, XhsAutherNotesResponse
+from app.models.xhs_models import XhsSearchResponse, XhsNote, XhsAutherNotesResponse, XhsComment, XhsCommentsResponse, XhsNoteDetail, XhsNoteDetailResponse, XhsTopicDiscussion, XhsTopicsResponse
 from app.database.db import get_db
 from sqlalchemy.orm import Session
 
@@ -144,7 +144,7 @@ class XhsService:
         }
         payload = {
             "parameters": {
-                "user_profile_url": user_profile_url,
+                "userProfileUrl": user_profile_url,
                 "cookie": settings.XHS_COOKIE
             },
             "workflow_id": "7480852360857714739"
@@ -181,7 +181,7 @@ class XhsService:
                             resp_data = data_json["resp_data"]
                             
                             # 将resp_data转换为XhsSearchResponse对象并存储到数据库
-                            search_response = XhsAutherNotesResponse(
+                            auther_response = XhsAutherNotesResponse(
                                 status=data_json.get("resp_code", 0),  # 使用外层的resp_code
                                 data=resp_data  # resp_data本身就是列表
                             )
@@ -198,7 +198,7 @@ class XhsService:
                                 db.rollback()
                                 
                                 # 调用XhsDAO.store_auther_notes方法存储搜索结果
-                                stored_notes = XhsDAO.store_auther_notes(db, req_info, search_response)
+                                stored_notes = XhsDAO.store_auther_notes(db, req_info, auther_response)
                                 print(f"成功存储 {len(stored_notes)} 条笔记数据到数据库")
                             except Exception as e:
                                 print(f"存储笔记数据到数据库时出错: {e}")
@@ -218,3 +218,259 @@ class XhsService:
             print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
             
         return stored_notes
+    
+    @staticmethod
+    def get_comments_by_note_id(note_id: str, xsec_token: str, comments_num: int) -> List[XhsComment]:
+        note_url = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}"
+
+        url = "https://api.coze.cn/v1/workflow/run"
+        headers = {
+            "Authorization": f"Bearer {settings.COZE_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "parameters": {
+                "noteUrl": note_url,
+                "comments_num": comments_num,
+                "cookie": settings.XHS_COOKIE
+            },
+            "workflow_id": "7480889721393152035"
+        }
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()  # 如果请求失败，抛出异常
+        
+        # 确保目录存在
+        mock_dir = "mock/resp"
+        os.makedirs(mock_dir, exist_ok=True)
+
+        # 生成文件名,使用时间戳避免重名
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{mock_dir}/xhs_get_comments_by_note_{timestamp}.json"
+
+        # 保存响应内容
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(response.json(), f, ensure_ascii=False, indent=2)
+        
+        result = response.json()
+        if isinstance(result, dict) and "data" in result:
+                if isinstance(result["data"], str):
+                    try:
+                        # 检查字符串是否为空
+                        if not result["data"]:
+                            print("data字段为空")
+                            return []
+
+                        # 替换中文逗号为英文逗号
+                        data_json = json.loads(result["data"].replace('，', ','))
+                        
+                        # 检查resp_data字段
+                        if "resp_data" in data_json:
+                            resp_data = data_json["resp_data"]
+                            
+                            # 将resp_data转换为XhsSearchResponse对象并存储到数据库
+                            comment_response = XhsCommentsResponse(
+                                status=data_json.get("resp_code", 0),  # 使用外层的resp_code
+                                data=resp_data  # resp_data本身就是列表
+                            )
+                            
+                            # 准备请求信息
+                            req_info = {
+                                "noteUrl": note_url,
+                                "totalNumber": comments_num
+                            }
+                            
+                            # 获取数据库会话
+                            db = next(get_db())
+                            try:
+                                # 确保数据库会话是干净的
+                                db.rollback()
+                                
+                                # 调用XhsDAO.store_auther_notes方法存储搜索结果
+                                stored_comments = XhsDAO.store_comments(db, req_info, comment_response)
+                                print(f"成功存储 {len(stored_comments)} 条评论数据到数据库")
+                            except Exception as e:
+                                print(f"存储评论数据到数据库时出错: {e}")
+                                traceback.print_exc()
+                            finally:
+                                db.close()
+                        else:
+                            print("未找到resp_data字段,data字段内容:", json.dumps(data_json, ensure_ascii=False, indent=2))
+                    except json.JSONDecodeError as e:
+                        print(f"data字段JSON解析错误: {e}")
+                        print("data字段内容:", result["data"])  # 打印原始字符串以便调试
+                else:
+                    print("未找到data字段或result不是字典")
+                    print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print("未找到data字段或result不是字典")
+            print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
+            
+        return stored_comments
+    
+    @staticmethod
+    def get_xhs_note_detail(note_id : str, xsec_token : str)->List[XhsNoteDetail]:
+        note_url = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}"
+
+        url = "https://api.coze.cn/v1/workflow/run"
+        headers = {
+            "Authorization": f"Bearer {settings.COZE_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "parameters": {
+                "noteUrl": note_url,
+                "cookie": settings.XHS_COOKIE
+            },
+            "workflow_id": "7480895021278920716"
+        }
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()  # 如果请求失败，抛出异常
+        
+        # 确保目录存在
+        mock_dir = "mock/resp"
+        os.makedirs(mock_dir, exist_ok=True)
+
+        # 生成文件名,使用时间戳避免重名
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{mock_dir}/xhs_get_note_detail_{timestamp}.json"
+
+        # 保存响应内容
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(response.json(), f, ensure_ascii=False, indent=2)
+        
+        result = response.json()
+        if isinstance(result, dict) and "data" in result:
+                if isinstance(result["data"], str):
+                    try:
+                        # 检查字符串是否为空
+                        if not result["data"]:
+                            print("data字段为空")
+                            return []
+
+                        # 替换中文逗号为英文逗号
+                        data_json = json.loads(result["data"].replace('，', ','))
+                        
+                        # 检查resp_data字段
+                        if "resp_data" in data_json:
+                            resp_data = data_json["resp_data"]
+                            
+                            # 将resp_data转换为XhsSearchResponse对象并存储到数据库
+                            note_response = XhsNoteDetailResponse(
+                                status=data_json.get("resp_code", 0),  # 使用外层的resp_code
+                                data=resp_data  # resp_data本身就是列表
+                            )
+                            
+                            # 准备请求信息
+                            req_info = {
+                                "noteUrl": note_url
+                            }
+                            
+                            # 获取数据库会话
+                            db = next(get_db())
+                            try:
+                                # 确保数据库会话是干净的
+                                db.rollback()
+                                
+                                # 调用XhsDAO.store_auther_notes方法存储搜索结果
+                                stored_note = XhsDAO.store_note_detail(db, req_info, note_response)
+                            except Exception as e:
+                                print(f"存储笔记数据到数据库时出错: {e}")
+                                traceback.print_exc()
+                            finally:
+                                db.close()
+                        else:
+                            print("未找到resp_data字段,data字段内容:", json.dumps(data_json, ensure_ascii=False, indent=2))
+                    except json.JSONDecodeError as e:
+                        print(f"data字段JSON解析错误: {e}")
+                        print("data字段内容:", result["data"])  # 打印原始字符串以便调试
+                else:
+                    print("未找到data字段或result不是字典")
+                    print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print("未找到data字段或result不是字典")
+            print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
+            
+        return stored_note
+    
+    @staticmethod
+    def get_topics(tag: str)->List[XhsTopicDiscussion]:
+        url = "https://api.coze.cn/v1/workflow/run"
+        headers = {
+            "Authorization": f"Bearer {settings.COZE_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "parameters": {
+                "keyword": tag,
+                "cookie": settings.XHS_COOKIE
+            },
+            "workflow_id": "7480898701533397031"
+        }
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()  # 如果请求失败，抛出异常
+        
+        # 确保目录存在
+        mock_dir = "mock/resp"
+        os.makedirs(mock_dir, exist_ok=True)
+
+        # 生成文件名,使用时间戳避免重名
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{mock_dir}/xhs_get_topics_{timestamp}.json"
+
+        # 保存响应内容
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(response.json(), f, ensure_ascii=False, indent=2)
+        
+        result = response.json()
+        if isinstance(result, dict) and "data" in result:
+                if isinstance(result["data"], str):
+                    try:
+                        # 检查字符串是否为空
+                        if not result["data"]:
+                            print("data字段为空")
+                            return []
+
+                        # 替换中文逗号为英文逗号
+                        data_json = json.loads(result["data"].replace('，', ','))
+                        
+                        # 检查resp_data字段
+                        if "resp_data" in data_json:
+                            resp_data = data_json["resp_data"]
+                            
+                            # 将resp_data转换为XhsSearchResponse对象并存储到数据库
+                            topics_response = XhsTopicsResponse(
+                                code=data_json.get("resp_code", 0),  # 使用外层的resp_code
+                                data=resp_data  # resp_data本身就是列表
+                            )
+                            
+                            # 准备请求信息
+                            req_info = {
+                                "keyword": tag
+                            }
+                            
+                            # 获取数据库会话
+                            db = next(get_db())
+                            try:
+                                # 确保数据库会话是干净的
+                                db.rollback()
+                                topics = XhsDAO.store_topics(db, topics_response)
+                            except Exception as e:
+                                print(f"存储话题数据到数据库时出错: {e}")
+                                traceback.print_exc()
+                            finally:
+                                db.close()
+                        else:
+                            print("未找到resp_data字段,data字段内容:", json.dumps(data_json, ensure_ascii=False, indent=2))
+                    except json.JSONDecodeError as e:
+                        print(f"data字段JSON解析错误: {e}")
+                        print("data字段内容:", result["data"])  # 打印原始字符串以便调试
+                else:
+                    print("未找到data字段或result不是字典")
+                    print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print("未找到data字段或result不是字典")
+            print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
+            
+        return topics
+    
+    
