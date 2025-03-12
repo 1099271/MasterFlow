@@ -2,9 +2,9 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from app.models.xhs_models import (
     XhsAuther, XhsNote, XhsKeywordGroup, XhsKeywordGroupNote, XhsNoteDetailResponse,
-    XhsNoteItem, XhsSearchResponse, XhsNoteDetail, XhsComment, XhsCommentAtUser,
+    XhsSearchResponse, XhsNoteDetail, XhsComment, XhsCommentAtUser,
     XhsTopicDiscussion, XhsTopicsResponse, XhsCommentsResponse, XhsCommentItem, XhsCommentAtUserItem,
-    XhsAutherNotesResponse, XhsAutherNotesItem, XhsAutherNotes
+    XhsAutherNotesResponse
 )
 from datetime import datetime
 import json
