@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from app.models.xhs_models import (
-    XhsAuther, XhsNote, XhsKeywordGroup, XhsKeywordGroupNote, 
+    XhsAuther, XhsNote, XhsKeywordGroup, XhsKeywordGroupNote, XhsNoteDetailResponse,
     XhsNoteItem, XhsSearchResponse, XhsNoteDetail, XhsComment, XhsCommentAtUser,
-    XhsTopicDiscussion, XhsTopicsResponse
+    XhsTopicDiscussion, XhsTopicsResponse, XhsCommentsResponse, XhsCommentItem, XhsCommentAtUserItem,
+    XhsAutherNotesResponse, XhsAutherNotesItem, XhsAutherNotes
 )
 from datetime import datetime
 import json
@@ -627,15 +628,6 @@ class XhsDAO:
                             if sub_comment_item.comment_at_users:
                                 for at_user in sub_comment_item.comment_at_users:
                                     XhsDAO._process_comment_at_user(db, sub_comment.comment_id, at_user)
-                    
-                    # 关联评论与关键词群组
-                    if keyword_group and keyword_group.group_id > 0:
-                        try:
-                            # 先关联笔记与关键词群组
-                            XhsDAO.associate_note_with_keyword_group(db, comment.note_id, keyword_group.group_id)
-                            logger.debug(f"关联笔记 {comment.note_id} 与关键词群组 {keywords}")
-                        except Exception as e:
-                            logger.error(f"关联笔记与关键词群组时出错: {str(e)}")
                     
                     stored_comments.append(comment)
                     
