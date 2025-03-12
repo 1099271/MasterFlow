@@ -1,12 +1,26 @@
-fastapi==0.103.1
+# Web框架和服务器
+fastapi==0.115.11
 uvicorn==0.23.2
+
+# 数据库相关
 sqlalchemy==2.0.21
 pymysql==1.1.0
-pydantic==2.3.0
+cryptography==41.0.5
+
+# 数据验证和设置
+pydantic==2.7.0
+pydantic-settings==2.3.0
 python-dotenv==1.0.0
+
+# 认证和安全
 passlib==1.7.4
 bcrypt==4.0.1
 python-jose==3.3.0
-python-multipart==0.0.6
-email-validator==2.0.0
- 
+python-multipart==0.0.18
+
+# 工具和实用程序
+typer==0.12
+requests==2.32.2
+
+# 日志和调试
+loguru==0.7.2

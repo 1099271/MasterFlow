@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
+    # coze api
+    COZE_API_TOKEN: str = os.getenv("COZE_API_TOKEN", "your-secret-key-here")
+    
+    # 小红书设置
+    XHS_COOKIE: str = os.getenv("XHS_COOKIE")
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
