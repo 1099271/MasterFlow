@@ -1,5 +1,6 @@
 import typer
 from app.services.xhs_service import XhsService
+from cli.xhs import app as xhs_app
 
 app = typer.Typer()
 
@@ -8,7 +9,6 @@ def main():
     """
     默认命令，显示欢迎信息
     """
-    print("欢迎使用小红书爬虫工具")
     print("使用 --help 查看所有可用命令")
 
 @app.command(name="get_notes_by_tag")
