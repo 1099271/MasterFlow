@@ -55,7 +55,7 @@ class XhsService:
             
             # 生成文件名,使用时间戳避免重名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{mock_dir}/{mock_file_prefix}_{timestamp}.json"
+            filename = f"{mock_dir}/{mock_file_prefix}/{timestamp}.json"
             
             # 保存响应内容
             with open(filename, "w", encoding="utf-8") as f:
