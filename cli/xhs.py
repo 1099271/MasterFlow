@@ -32,6 +32,46 @@ def search_notes_by_topic(
         print(f"执行任务时出错: {e}")
         import traceback
         traceback.print_exc()
+
+@app.command(name="deal_note_have_detail")
+def deal_note_have_detail():
+    """
+    从数据库中查询没有详情页的笔记，然后获取详情页
+    """
+    print(f"开始搜索没有详情页的笔记")
     
+    try:
+        # 调用业务逻辑方法
+        processed_notes = TopicService.deal_note_have_detail()
+        
+        if processed_notes > 0:
+            print(f"任务完成! 共处理了 {processed_notes} 个笔记")
+        else:
+            print(f"没有找到符合条件的热门笔记")
+    except Exception as e:
+        print(f"执行任务时出错: {e}")
+        import traceback
+        traceback.print_exc()
+
+@app.command(name="deal_note_comments")
+def deal_note_comments():
+    """
+    从数据库中查询没有评论的笔记，然后获取评论
+    """
+    print(f"开始搜索没有评论的笔记")
+    
+    try:
+        # 调用业务逻辑方法
+        processed_notes = TopicService.deal_note_comments()
+        
+        if processed_notes > 0:
+            print(f"任务完成! 共处理了 {processed_notes} 个笔记")
+        else:
+            print(f"没有找到符合条件的热门笔记")
+    except Exception as e:
+        print(f"执行任务时出错: {e}")
+        import traceback
+        traceback.print_exc()
+
 if __name__ == "__main__":
     app()

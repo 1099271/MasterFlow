@@ -36,27 +36,25 @@ def get_xhs_notes_by_auther_id_cli(
 
 @app.command(name="get_comments_by_note")
 def get_xhs_comments_by_note_id_cli(
-    note_id: str = typer.Option(..., "--note_id", "-nid", help="笔记的链接Id"),
-    xsec_token: str = typer.Option(..., "--xsec_token", "-x", help="笔记的xsec_token"),
+    note_url: str = typer.Option(..., "--note_url", "-url", help="笔记的链接"),
     comments_num: int = typer.Option(100, "--num", "-n", help="评论数量")
 ):
     """
     根据笔记Id获取评论信息
     """
     print(f"正在获取该帖子下的全部评论")
-    comments = XhsService.get_comments_by_note_id(note_id, xsec_token, comments_num)
+    comments = XhsService.get_comments_by_note_id(note_url, comments_num)
     print(f"Done!一共获取到了 {len(comments)} 条评论")
 
 @app.command(name="get_note_detail")
 def get_xhs_note_detail_cli(
-    note_id: str = typer.Option(..., "--note_id", "-nid", help="笔记的链接Id"),
-    xsec_token: str = typer.Option(..., "--xsec_token", "-x", help="笔记的xsec_token")
+    note_url: str = typer.Option(..., "--note_url", "-url", help="笔记的链接")
 ):
     """
     获取某个笔记的详情数据
     """
     print(f"正在获取该笔记详细信息")
-    XhsService.get_xhs_note_detail(note_id, xsec_token)
+    XhsService.get_xhs_note_detail(note_url)
     print(f"Done!")
     
 @app.command(name="get_topics")

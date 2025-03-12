@@ -1,6 +1,7 @@
 import logging
 import time
 import sys
+import random
 
 from typing import List
 from sqlalchemy import text
@@ -89,6 +90,87 @@ class TopicService:
             logger.info(f"任务完成，共处理 {len(topics)} 个话题，获取 {total_notes} 条笔记")
             return len(topics)
             
+        except Exception as e:
+            logger.error(f"查询热门话题时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
+            
+        finally:
+            db.close()
+
+    @staticmethod
+    def deal_note_have_detail():
+        """
+        处理没有详情页的笔记
+        """
+        logger = logging.getLogger(__name__)
+        logger.info(f"开始处理没有详情页的笔记")
+
+        # 获取数据库连接
+        db = next(get_db())
+        
+        try:
+            # 查询没有详情页的笔记
+            query = text("""
+                SELECT xhs_notes.note_url
+                FROM xhs_notes left join xhs_note_details on xhs_notes.note_id = xhs_note_details.note_id
+                WHERE xhs_note_details.note_desc is null or xhs_note_details.note_id is null
+            """)
+
+            result = db.execute(query)
+            for row in result:
+                note_url = row[0]
+                logger.info(f"处理笔记: {note_url}")
+                # 获取详情页
+                detail = XhsService.get_xhs_note_detail(note_url)
+                if detail:
+                    logger.info(f"获取笔记详情页成功: {note_url}")
+                else:
+                    logger.error(f"获取笔记详情页失败: {note_url}")
+                second = random.randint(10, 30)
+                time.sleep(second)
+            return len(result)
+        except Exception as e:
+            logger.error(f"查询热门话题时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
+            
+        finally:
+            db.close()
+    
+    @staticmethod
+    def deal_note_comments():
+        """
+        处理没有评论的笔记
+        """
+        logger = logging.getLogger(__name__)
+        logger.info(f"开始处理没有评论的笔记")
+
+        # 获取数据库连接
+        db = next(get_db())
+        
+        try:
+            # 查询没有详情页的笔记
+            query = text("""
+                select note_url, comment_count, note_liked_count
+                from xhs_note_details where comment_count > 0 and note_liked_count > 0
+            """)
+
+            result = db.execute(query)
+            for row in result:
+                note_url = row[0]
+                comment_count = row[1]
+                logger.info(f"处理笔记: {note_url}")
+                # 获取评论
+                comments = XhsService.get_comments_by_note_url(note_url, comment_count)
+                if comments:
+                    logger.info(f"获取笔记评论成功: {note_url}")
+                else:
+                    logger.error(f"获取笔记评论失败: {note_url}")
+                second = random.randint(60, 100)
+                time.sleep(second)
         except Exception as e:
             logger.error(f"查询热门话题时出错: {e}")
             import traceback

@@ -250,7 +250,7 @@ class XhsService:
         )
     
     @staticmethod
-    def get_comments_by_note_id(note_id: str, xsec_token: str, comments_num: int) -> List[XhsComment]:
+    def get_comments_by_note_url(note_url: str, comments_num: int) -> List[XhsComment]:
         """
         根据笔记ID获取评论
         
@@ -262,7 +262,6 @@ class XhsService:
         Returns:
             存储的评论列表
         """
-        note_url = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}"
         
         # 设置API参数
         parameters = {
@@ -298,7 +297,7 @@ class XhsService:
         )
     
     @staticmethod
-    def get_xhs_note_detail(note_id: str, xsec_token: str) -> List[XhsNoteDetail]:
+    def get_xhs_note_detail(note_url: str) -> List[XhsNoteDetail]:
         """
         获取笔记详情
         
@@ -309,7 +308,6 @@ class XhsService:
         Returns:
             存储的笔记详情
         """
-        note_url = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}"
         
         # 设置API参数
         parameters = {
