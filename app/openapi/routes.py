@@ -340,8 +340,7 @@ async def xhs_auther_notes(
     try:
         # 记录请求信息
         user_profile_url = request.req_info.get('userProfileUrl', '')
-        keywords = request.req_info.get('keywords', '')
-        logger.info(f"接收到作者笔记数据存储请求，作者主页URL: {user_profile_url}, 关键词: {keywords}")
+        logger.info(f"接收到作者笔记数据存储请求，作者主页URL: {user_profile_url}")
         
         # 验证请求体
         if not request.req_body or not request.req_body.data or not request.req_body.data.auther_info:

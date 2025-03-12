@@ -23,16 +23,17 @@ def get_xhs_notes_by_tag_cli(
     notes = XhsService.get_notes_by_tag(tag, num)
     print(f"完成! 共获取了 {len(notes)} 条笔记")
 
-@app.command(name="get_notes_by_author")
+@app.command(name="get_notes_by_auther")
 def get_xhs_notes_by_auther_id_cli(
-    author_id: str = typer.Option(..., "--author-id", "-a", help="博主的用户ID")
+    auther_id: str = typer.Option(..., "--auther_id", "-a", help="博主的用户ID")
 ):
     """
     根据博主的用户ID获取全部笔记内容
     """
-    print(f"正在获取博主 '{author_id}' 的所有笔记...")
-    notes = XhsService.get_notes_by_auther_id(author_id)
+    print(f"正在获取博主 '{auther_id}' 的所有笔记...")
+    notes = XhsService.get_notes_by_auther_id(auther_id)
     print(f"完成! 共获取了 {len(notes)} 条笔记")
+
 
 if __name__ == "__main__":
     app()
