@@ -1,12 +1,15 @@
-import logging
 import time
 import sys
 import random
-
 from typing import List
 from sqlalchemy import text
 from app.database.db import get_db
 from app.services.xhs_service import XhsService
+from app.utils.logger import get_logger, info, warning, error, debug
+import traceback
+
+# 获取当前模块的日志器
+logger = get_logger(__name__)
 
 class TopicService:
     @staticmethod
@@ -24,8 +27,7 @@ class TopicService:
         Returns:
             处理的话题数量
         """
-        logger = logging.getLogger(__name__)
-        logger.info(f"开始搜索热门话题笔记，最小浏览量：{min_view_num}，话题限制：{topic_limit}")
+        info(f"开始搜索热门话题笔记，最小浏览量：{min_view_num}，话题限制：{topic_limit}")
         
         # 获取数据库连接
         db = next(get_db())
@@ -56,10 +58,10 @@ class TopicService:
                 }
                 topics.append(topic)
                 
-            logger.info(f"找到 {len(topics)} 个符合条件的热门话题")
+            info(f"找到 {len(topics)} 个符合条件的热门话题")
             
             if not topics:
-                logger.error(f"没有找到符合条件的热门话题!")
+                error(f"没有找到符合条件的热门话题!")
                 return 0
 
             # 遍历话题获取笔记
@@ -71,29 +73,30 @@ class TopicService:
                 view_num = topic.get("view_num", 0)
                 
                 if not topic_name or topic_name == "未知话题":
-                    logger.warning(f"跳过无效话题: ID={id}")
+                    warning(f"跳过无效话题: ID={id}")
                     continue
                 
-                logger.info(f"处理话题: {topic_name}(ID: {id})，浏览量: {view_num}")
+                info(f"处理话题: {topic_name}(ID: {id})，浏览量: {view_num}")
                 
                 try:
                     # 使用话题名称作为标签获取笔记
                     notes = XhsService.get_notes_by_tag(topic_name, notes_per_topic)
                     total_notes += len(notes)
-                    logger.info(f"成功获取话题 '{topic_name}' 的 {len(notes)} 条笔记")
+                    info(f"成功获取话题 '{topic_name}' 的 {len(notes)} 条笔记")
                 except Exception as e:
-                    logger.error(f"获取话题 '{topic_name}' 的笔记时出错: {e}")
+                    error(f"获取话题 '{topic_name}' 的笔记时出错: {e}")
+    
+                    error(traceback.format_exc())
                     
-                logger.info("等待60秒后处理下一个话题...")
+                info("等待60秒后处理下一个话题...")
                 time.sleep(60)
             
-            logger.info(f"任务完成，共处理 {len(topics)} 个话题，获取 {total_notes} 条笔记")
+            info(f"任务完成，共处理 {len(topics)} 个话题，获取 {total_notes} 条笔记")
             return len(topics)
             
         except Exception as e:
-            logger.error(f"查询热门话题时出错: {e}")
-            import traceback
-            traceback.print_exc()
+            error(f"查询热门话题时出错: {e}")
+            error(traceback.format_exc())
             return 0
             
         finally:
@@ -104,11 +107,11 @@ class TopicService:
         """
         处理没有详情页的笔记
         """
-        logger = logging.getLogger(__name__)
-        logger.info(f"开始处理没有详情页的笔记")
+        info(f"开始处理没有详情页的笔记")
 
         # 获取数据库连接
         db = next(get_db())
+        processed_count = 0
         
         try:
             # 查询没有详情页的笔记
@@ -119,22 +122,34 @@ class TopicService:
             """)
 
             result = db.execute(query)
-            for row in result:
-                note_url = row[0]
-                logger.info(f"处理笔记: {note_url}")
+            note_urls = [row[0] for row in result]
+            
+            info(f"------------ 找到 {len(note_urls)} 条没有详情页的笔记 ----------------")
+
+            for note_url in note_urls:
+                info(f"处理笔记: {note_url}")
                 # 获取详情页
-                detail = XhsService.get_xhs_note_detail(note_url)
-                if detail:
-                    logger.info(f"获取笔记详情页成功: {note_url}")
-                else:
-                    logger.error(f"获取笔记详情页失败: {note_url}")
-                second = random.randint(1, 5)
-                time.sleep(second)
-            return len(result)
+                try:
+                    detail = XhsService.get_xhs_note_detail(note_url)
+                    if detail:
+                        info(f"获取笔记详情页成功: {note_url}")
+                        processed_count += 1
+                    else:
+                        warning(f"获取笔记详情页失败: {note_url}")
+                except Exception as e:
+                    error(f"获取笔记详情页出错: {note_url} - {e}")
+                    
+                # 随机等待1-5秒
+                sleep_time = random.randint(1, 5)
+                debug(f"等待 {sleep_time} 秒后继续...")
+                time.sleep(sleep_time)
+                
+            info(f"任务完成，共处理 {processed_count} 条笔记")
+            return processed_count
+            
         except Exception as e:
-            logger.error(f"查询热门话题时出错: {e}")
-            import traceback
-            traceback.print_exc()
+            error(f"处理笔记详情时出错: {e}")
+            error(traceback.format_exc())
             return 0
             
         finally:
@@ -145,11 +160,11 @@ class TopicService:
         """
         处理没有评论的笔记
         """
-        logger = logging.getLogger(__name__)
-        logger.info(f"开始处理没有评论的笔记")
+        info(f"开始处理没有评论的笔记")
 
         # 获取数据库连接
         db = next(get_db())
+        processed_count = 0
         
         try:
             # 查询没有详情页的笔记
@@ -159,22 +174,34 @@ class TopicService:
             """)
 
             result = db.execute(query)
-            for row in result:
-                note_url = row[0]
-                comment_count = row[1]
-                logger.info(f"处理笔记: {note_url}")
+            note_data = [(row[0], row[1]) for row in result]
+            
+            info(f"找到 {len(note_data)} 条需要获取评论的笔记")
+            
+            for note_url, comment_count in note_data:
+                info(f"处理笔记: {note_url}, 评论数: {comment_count}")
                 # 获取评论
-                comments = XhsService.get_comments_by_note_url(note_url, comment_count)
-                if comments:
-                    logger.info(f"获取笔记评论成功: {note_url}")
-                else:
-                    logger.error(f"获取笔记评论失败: {note_url}")
-                second = random.randint(60, 100)
-                time.sleep(second)
+                try:
+                    comments = XhsService.get_comments_by_note_url(note_url, comment_count)
+                    if comments:
+                        info(f"获取笔记评论成功: {note_url} - {len(comments)} 条评论")
+                        processed_count += 1
+                    else:
+                        warning(f"获取笔记评论失败: {note_url}")
+                except Exception as e:
+                    error(f"获取笔记评论出错: {note_url} - {e}")
+                
+                # 随机等待60-100秒，避免频繁请求
+                sleep_time = random.randint(60, 100)
+                info(f"等待 {sleep_time} 秒后继续...")
+                time.sleep(sleep_time)
+                
+            info(f"任务完成，共处理 {processed_count} 条笔记评论")
+            return processed_count
+            
         except Exception as e:
-            logger.error(f"查询热门话题时出错: {e}")
-            import traceback
-            traceback.print_exc()
+            error(f"处理笔记评论时出错: {e}")
+            error(traceback.format_exc())
             return 0
             
         finally:

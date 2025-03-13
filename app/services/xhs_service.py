@@ -10,7 +10,10 @@ from app.models.xhs_dao import XhsDAO
 from app.models.xhs_models import XhsSearchResponse, XhsNote, XhsAutherNotesResponse, XhsComment, XhsCommentsResponse, XhsNoteDetail, XhsNoteDetailResponse, XhsTopicDiscussion, XhsTopicsResponse
 from app.database.db import get_db
 from sqlalchemy.orm import Session
+from app.utils.logger import get_logger, info, warning, error, debug
 
+# 获取当前模块的日志器
+logger = get_logger(__name__)
 # 定义泛型类型变量
 T = TypeVar('T')
 
@@ -64,7 +67,7 @@ class XhsService:
             return response.json()
             
         except Exception as e:
-            print(f"调用Coze API失败: {e}")
+            error(f"调用Coze API失败: {e}")
             traceback.print_exc()
             return {}
     
@@ -83,22 +86,22 @@ class XhsService:
         if not result or not isinstance(result, dict) or "data" not in result:
             if result['code'] == 720702222:
                 # We're currently experiencing server issues. Please try your request again after a short delay. If the problem persists, contact our support team.
-                print("Coze服务器正在维护，请稍后再试")
+                warning("Coze服务器正在维护，请稍后再试")
                 return None, {}
             
-            print("未找到data字段或result不是字典")
-            print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
+            error("未找到data字段或result不是字典")
+            info("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
             return None, {}
             
         if not isinstance(result["data"], str):
-            print("data字段不是字符串")
-            print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
+            error("data字段不是字符串")
+            info("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
             return None, {}
             
         try:
             # 检查字符串是否为空
             if not result["data"]:
-                print("data字段为空")
+                error("data字段为空")
                 return None, {}
                 
             # 替换中文逗号为英文逗号
@@ -122,12 +125,12 @@ class XhsService:
                     
                 return response_obj, data_json
             else:
-                print("未找到resp_data字段,data字段内容:", json.dumps(data_json, ensure_ascii=False, indent=2))
+                error("未找到resp_data字段,data字段内容:", json.dumps(data_json, ensure_ascii=False, indent=2))
                 return None, {}
                 
         except json.JSONDecodeError as e:
-            print(f"data字段JSON解析错误: {e}")
-            print("data字段内容:", result["data"])  # 打印原始字符串以便调试
+            error(f"data字段JSON解析错误: {e}")
+            error("data字段内容:", result["data"])  # 打印原始字符串以便调试
             return None, {}
     
     @staticmethod
@@ -154,10 +157,10 @@ class XhsService:
             
             # 调用数据库操作方法
             stored_data = db_method(db, req_info, response_obj)
-            print(f"成功存储 {len(stored_data) if isinstance(stored_data, list) else 1} 条{data_type}数据到数据库")
+            info(f"成功存储 {len(stored_data) if isinstance(stored_data, list) else 1} 条{data_type}数据到数据库")
             
         except Exception as e:
-            print(f"存储{data_type}数据到数据库时出错: {e}")
+            error(f"存储{data_type}数据到数据库时出错: {e}")
             traceback.print_exc()
             
         finally:

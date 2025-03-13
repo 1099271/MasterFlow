@@ -8,11 +8,13 @@ from app.models.xhs_models import (
 )
 from datetime import datetime
 import json
-import logging
 import traceback
 import uuid
 import sys
+from app.utils.logger import get_logger, info, warning, error, debug
 
+# 获取当前模块的日志器
+logger = get_logger(__name__)
 class XhsDAO:
     """小红书数据访问对象"""
     
@@ -21,7 +23,7 @@ class XhsDAO:
         """获取或创建作者记录"""
         auther_user_id = auther_data.get("auther_user_id")
         if not auther_user_id:
-            print(f"警告：作者数据中缺少auther_user_id: {auther_data}")
+            info(f"警告：作者数据中缺少auther_user_id: {auther_data}")
             return None
         
         try:
@@ -30,7 +32,7 @@ class XhsDAO:
             
             # 如果作者不存在，创建新的作者记录
             if not auther:
-                print(f"创建新作者: {auther_user_id}")
+                info(f"创建新作者: {auther_user_id}")
                 auther = XhsAuther(
                     auther_user_id=auther_user_id,
                     auther_nick_name=auther_data.get("auther_nick_name"),
@@ -47,9 +49,9 @@ class XhsDAO:
                 )
                 db.add(auther)
                 db.flush()
-                print(f"新作者创建成功: {auther_user_id}")
+                info(f"新作者创建成功: {auther_user_id}")
             else:
-                print(f"更新现有作者: {auther_user_id}")
+                info(f"更新现有作者: {auther_user_id}")
                 # 更新作者信息
                 auther.auther_nick_name = auther_data.get("auther_nick_name", auther.auther_nick_name)
                 auther.auther_avatar = auther_data.get("auther_avatar", auther.auther_avatar)
@@ -63,12 +65,12 @@ class XhsDAO:
                 auther.auther_follows = auther_data.get("auther_follows", auther.auther_follows)
                 auther.auther_gender = auther_data.get("auther_gender", auther.auther_gender)
                 auther.updated_at = datetime.now()
-                print(f"作者信息更新成功: {auther_user_id}")
+                info(f"作者信息更新成功: {auther_user_id}")
                 
             return auther
             
         except Exception as e:
-            print(f"处理作者数据时出错 {auther_user_id}: {str(e)}")
+            info(f"处理作者数据时出错 {auther_user_id}: {str(e)}")
             return None
     
     @staticmethod
@@ -128,7 +130,7 @@ class XhsDAO:
     @staticmethod
     def get_or_create_keyword_group(db: Session, keywords: str, group_name: Optional[str] = None) -> XhsKeywordGroup:
         """获取或创建关键词群组"""
-        logger = logging.getLogger(__name__)
+        
         
         try:
             # 尝试查找关键词群组（精确匹配关键词列表）
@@ -147,14 +149,14 @@ class XhsDAO:
                 )
                 db.add(keyword_group)
                 db.flush()
-                logger.info(f"创建新的关键词群组: {unique_group_name}, 关键词: {keywords}")
+                info(f"创建新的关键词群组: {unique_group_name}, 关键词: {keywords}")
             else:
-                logger.info(f"找到现有关键词群组: {keyword_group.group_name}, ID: {keyword_group.group_id}")
+                info(f"找到现有关键词群组: {keyword_group.group_name}, ID: {keyword_group.group_id}")
                 
             return keyword_group
             
         except Exception as e:
-            logger.error(f"创建或获取关键词群组时出错: {str(e)}")
+            error(f"创建或获取关键词群组时出错: {str(e)}")
             # 创建一个临时的关键词群组对象，不保存到数据库
             # 这样即使出错，后续代码也能继续执行
             temp_group = XhsKeywordGroup(
@@ -191,7 +193,6 @@ class XhsDAO:
     def store_search_results(db: Session, req_info: Dict[str, Any], search_response: XhsSearchResponse) -> List[XhsNote]:
         """存储搜索结果数据，确保幂等性操作"""
         stored_notes = []
-        logger = logging.getLogger(__name__)
         
         # 在开始前确保会话是干净的
         db.rollback()
@@ -201,7 +202,7 @@ class XhsDAO:
             note_ids = [note.note_id for note in search_response.data]
             auther_ids = [note.auther_user_id for note in search_response.data]
             
-            logger.info(f"开始处理 {len(note_ids)} 条笔记数据")
+            info(f"开始处理 {len(note_ids)} 条笔记数据")
             
             # 2. 批量查询已存在的笔记和作者
             existing_notes = {}
@@ -213,9 +214,9 @@ class XhsDAO:
                     note.note_id: note 
                     for note in db.query(XhsNote).filter(XhsNote.note_id.in_(note_ids)).all()
                 }
-                logger.info(f"找到 {len(existing_notes)} 条已存在的笔记")
+                info(f"找到 {len(existing_notes)} 条已存在的笔记")
             except Exception as e:
-                logger.error(f"查询笔记信息时出错: {str(e)}")
+                error(f"查询笔记信息时出错: {str(e)}")
             
             # 查询作者
             try:
@@ -223,9 +224,9 @@ class XhsDAO:
                     auther.auther_user_id: auther 
                     for auther in db.query(XhsAuther).filter(XhsAuther.auther_user_id.in_(auther_ids)).all()
                 }
-                logger.info(f"找到 {len(existing_authers)} 个已存在的作者")
+                info(f"找到 {len(existing_authers)} 个已存在的作者")
             except Exception as e:
-                logger.error(f"查询作者信息时出错: {str(e)}")
+                error(f"查询作者信息时出错: {str(e)}")
                 
                 # 尝试单独查询每个作者，以便找出问题所在
                 for auther_id in auther_ids:
@@ -234,7 +235,7 @@ class XhsDAO:
                         if auther:
                             existing_authers[auther.auther_user_id] = auther
                     except Exception as e2:
-                        logger.error(f"查询单个作者 {auther_id} 时出错: {str(e2)}")
+                        error(f"查询单个作者 {auther_id} 时出错: {str(e2)}")
             
             # 3. 获取或创建关键词群组
             keyword_group = None
@@ -257,9 +258,9 @@ class XhsDAO:
                                 XhsKeywordGroupNote.note_id.in_(note_ids)
                             ).all()
                         }
-                        logger.info(f"关键词群组: {keywords}, 已存在关联关系数量: {len(existing_associations)}")
+                        info(f"关键词群组: {keywords}, 已存在关联关系数量: {len(existing_associations)}")
                 except Exception as e:
-                    logger.error(f"处理关键词群组时出错: {str(e)}")
+                    error(f"处理关键词群组时出错: {str(e)}")
                     keyword_group = None
                     existing_associations = set()
             
@@ -390,10 +391,10 @@ class XhsDAO:
                             existing_associations.add(note.note_id)
                             logger.debug(f"创建关键词关联: {note.note_id} -> {keywords}")
                         except Exception as e:
-                            logger.error(f"创建关键词关联时出错: {str(e)}")
+                            error(f"创建关键词关联时出错: {str(e)}")
                 
                 except Exception as e:
-                    logger.error(f"处理笔记时出错 {getattr(note_item, 'note_id', '未知')}: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}")
+                    error(f"处理笔记时出错 {getattr(note_item, 'note_id', '未知')}: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}")
                     continue
             
             # 5. 提交事务
@@ -401,18 +402,18 @@ class XhsDAO:
                 # 每100条记录提交一次，避免事务过大
                 db.flush()
                 db.commit()
-                logger.info(f"成功处理并存储 {len(stored_notes)} 条笔记数据")
+                info(f"成功处理并存储 {len(stored_notes)} 条笔记数据")
             except Exception as e:
                 db.rollback()
                 error_detail = f"提交事务时出错: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-                logger.error(error_detail)
+                error(error_detail)
                 # 不抛出异常，而是返回已处理的笔记
-                logger.warning("由于事务提交错误，可能有部分数据未能成功存储")
+                warning("由于事务提交错误，可能有部分数据未能成功存储")
             
         except Exception as e:
             db.rollback()
             error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-            logger.error(f"存储过程中发生错误: {error_detail}")
+            error(f"存储过程中发生错误: {error_detail}")
             raise
         
         return stored_notes
@@ -420,7 +421,7 @@ class XhsDAO:
     @staticmethod
     def store_note_detail(db: Session, req_info: Dict[str, Any], note_detail_response: 'XhsNoteDetailResponse') -> XhsNote:
         """存储笔记详情数据，确保幂等性操作"""
-        logger = logging.getLogger(__name__)
+        
         
         # 在开始前确保会话是干净的
         db.rollback()
@@ -430,10 +431,10 @@ class XhsDAO:
             note_data = note_detail_response.data.note
             
             if not note_data or not note_data.note_id:
-                logger.warning("请求体中缺少有效的笔记详情数据")
+                warning("请求体中缺少有效的笔记详情数据")
                 return None
                 
-            logger.info(f"开始处理笔记详情数据，笔记ID: {note_data.note_id}")
+            info(f"开始处理笔记详情数据，笔记ID: {note_data.note_id}")
             
             # 处理作者信息
             auther_data = {
@@ -486,7 +487,7 @@ class XhsDAO:
                 try:
                     note_create_time = datetime.strptime(note_data.note_create_time, "%Y-%m-%d %H:%M:%S")
                 except Exception as e:
-                    logger.warning(f"解析笔记创建时间出错: {str(e)}")
+                    warning(f"解析笔记创建时间出错: {str(e)}")
                     note_create_time = datetime.now()
             else:
                 note_create_time = datetime.now()
@@ -495,7 +496,7 @@ class XhsDAO:
                 try:
                     note_last_update_time = datetime.strptime(note_data.note_last_update_time, "%Y-%m-%d %H:%M:%S")
                 except Exception as e:
-                    logger.warning(f"解析笔记更新时间出错: {str(e)}")
+                    warning(f"解析笔记更新时间出错: {str(e)}")
                     note_last_update_time = datetime.now()
             else:
                 note_last_update_time = datetime.now()
@@ -546,25 +547,25 @@ class XhsDAO:
             try:
                 db.flush()
                 db.commit()
-                logger.info(f"成功处理并存储笔记详情数据，笔记ID: {note.note_id}")
+                info(f"成功处理并存储笔记详情数据，笔记ID: {note.note_id}")
                 return note
             except Exception as e:
                 db.rollback()
                 error_detail = f"提交事务时出错: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-                logger.error(error_detail)
-                logger.warning("由于事务提交错误，可能有部分数据未能成功存储")
+                error(error_detail)
+                warning("由于事务提交错误，可能有部分数据未能成功存储")
                 return None
                 
         except Exception as e:
             db.rollback()
             error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-            logger.error(f"存储笔记详情过程中发生错误: {error_detail}")
+            error(f"存储笔记详情过程中发生错误: {error_detail}")
             raise 
 
     @staticmethod
     def store_comments(db: Session, req_info: Dict[str, Any], comments_response: 'XhsCommentsResponse') -> List[XhsComment]:
         """存储评论数据，确保幂等性操作"""
-        logger = logging.getLogger(__name__)
+        
         
         # 在开始前确保会话是干净的
         db.rollback()
@@ -574,10 +575,10 @@ class XhsDAO:
             comments_data = comments_response.data.comments
             
             if not comments_data:
-                logger.warning("请求体中缺少有效的评论数据")
+                warning("请求体中缺少有效的评论数据")
                 return []
                 
-            logger.info(f"开始处理评论数据，共 {len(comments_data)} 条评论")
+            info(f"开始处理评论数据，共 {len(comments_data)} 条评论")
             
             # 收集所有评论ID和用户ID
             comment_ids = []
@@ -596,7 +597,7 @@ class XhsDAO:
             comment_ids = list(set(comment_ids))
             user_ids = list(set(user_ids))
             
-            logger.info(f"共有 {len(comment_ids)} 条不重复评论，{len(user_ids)} 个不重复用户")
+            info(f"共有 {len(comment_ids)} 条不重复评论，{len(user_ids)} 个不重复用户")
             
             # 查询已存在的评论
             existing_comments = {
@@ -604,7 +605,7 @@ class XhsDAO:
                 for comment in db.query(XhsComment).filter(XhsComment.comment_id.in_(comment_ids)).all()
             }
             
-            logger.info(f"找到 {len(existing_comments)} 条已存在的评论")
+            info(f"找到 {len(existing_comments)} 条已存在的评论")
             
             # 存储评论数据
             stored_comments = []
@@ -632,32 +633,32 @@ class XhsDAO:
                     stored_comments.append(comment)
                     
                 except Exception as e:
-                    logger.error(f"处理评论时出错 {comment_item.comment_id}: {str(e)}")
+                    error(f"处理评论时出错 {comment_item.comment_id}: {str(e)}")
                     continue
             
             # 提交事务
             try:
                 db.flush()
                 db.commit()
-                logger.info(f"成功处理并存储 {len(stored_comments)} 条评论数据")
+                info(f"成功处理并存储 {len(stored_comments)} 条评论数据")
             except Exception as e:
                 db.rollback()
                 error_detail = f"提交事务时出错: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-                logger.error(error_detail)
-                logger.warning("由于事务提交错误，可能有部分数据未能成功存储")
+                error(error_detail)
+                warning("由于事务提交错误，可能有部分数据未能成功存储")
             
             return stored_comments
             
         except Exception as e:
             db.rollback()
             error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-            logger.error(f"存储评论过程中发生错误: {error_detail}")
+            error(f"存储评论过程中发生错误: {error_detail}")
             raise
     
     @staticmethod
     def _process_comment(db: Session, comment_item: 'XhsCommentItem', existing_comments: Dict[str, XhsComment], parent_id: Optional[str] = None) -> XhsComment:
         """处理单条评论数据"""
-        logger = logging.getLogger(__name__)
+        
         
         # 检查评论是否已存在
         comment = existing_comments.get(comment_item.comment_id)
@@ -668,7 +669,7 @@ class XhsDAO:
             try:
                 comment_create_time = datetime.strptime(comment_item.comment_create_time, "%Y-%m-%d %H:%M:%S")
             except Exception as e:
-                logger.warning(f"解析评论创建时间出错: {str(e)}")
+                warning(f"解析评论创建时间出错: {str(e)}")
                 comment_create_time = datetime.now()
         else:
             comment_create_time = datetime.now()
@@ -679,7 +680,7 @@ class XhsDAO:
             try:
                 comment_show_tags = json.dumps(comment_item.comment_show_tags)
             except Exception as e:
-                logger.warning(f"转换评论标签出错: {str(e)}")
+                warning(f"转换评论标签出错: {str(e)}")
         
         if not comment:
             # 创建新评论
@@ -728,7 +729,7 @@ class XhsDAO:
     @staticmethod
     def _process_comment_at_user(db: Session, comment_id: str, at_user_item: 'XhsCommentAtUserItem') -> XhsCommentAtUser:
         """处理评论@用户数据"""
-        logger = logging.getLogger(__name__)
+        
         
         # 检查@用户关系是否已存在
         at_user = db.query(XhsCommentAtUser).filter(
@@ -758,7 +759,7 @@ class XhsDAO:
     @staticmethod
     def store_auther_notes(db: Session, req_info: Dict[str, Any], auther_notes_response: 'XhsAutherNotesResponse') -> List[XhsNote]:
         """存储作者笔记数据，确保幂等性操作"""
-        logger = logging.getLogger(__name__)
+        
         
         # 在开始前确保会话是干净的
         db.rollback()
@@ -769,10 +770,10 @@ class XhsDAO:
             notes_data = auther_notes_response.data.notes
             
             if not auther_info or not auther_info.user_id:
-                logger.warning("请求体中缺少有效的作者信息")
+                warning("请求体中缺少有效的作者信息")
                 return []
                 
-            logger.info(f"开始处理作者笔记数据，作者ID: {auther_info.user_id}, 笔记数量: {len(notes_data)}")
+            info(f"开始处理作者笔记数据，作者ID: {auther_info.user_id}, 笔记数量: {len(notes_data)}")
             
             # 处理作者信息
             auther_data = {
@@ -823,32 +824,32 @@ class XhsDAO:
                     stored_notes.append(note)
                     
                 except Exception as e:
-                    logger.error(f"处理笔记时出错 {note_item.note_id}: {str(e)}")
+                    error(f"处理笔记时出错 {note_item.note_id}: {str(e)}")
                     continue
             
             # 提交事务
             try:
                 db.flush()
                 db.commit()
-                logger.info(f"成功处理并存储作者笔记数据，作者ID: {auther_info.user_id}, 存储笔记数: {len(stored_notes)}")
+                info(f"成功处理并存储作者笔记数据，作者ID: {auther_info.user_id}, 存储笔记数: {len(stored_notes)}")
                 return stored_notes
             except Exception as e:
                 db.rollback()
                 error_detail = f"提交事务时出错: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-                logger.error(error_detail)
-                logger.warning("由于事务提交错误，可能有部分数据未能成功存储")
+                error(error_detail)
+                warning("由于事务提交错误，可能有部分数据未能成功存储")
                 return []
                 
         except Exception as e:
             db.rollback()
             error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-            logger.error(f"存储作者笔记过程中发生错误: {error_detail}")
+            error(f"存储作者笔记过程中发生错误: {error_detail}")
             raise 
 
     @staticmethod
     def store_topics(db: Session, req_info: Dict[str, Any], topics_response: XhsTopicsResponse) -> List[XhsTopicDiscussion]:
         """存储话题数据，确保幂等性操作"""
-        logger = logging.getLogger(__name__)
+        
         
         # 在开始前确保会话是干净的
         db.rollback()
@@ -858,10 +859,10 @@ class XhsDAO:
             topics_data = topics_response.data.topic_list
             
             if not topics_data:
-                logger.warning("请求体中缺少有效的话题数据")
+                warning("请求体中缺少有效的话题数据")
                 return []
             
-            logger.info(f"开始处理话题数据，共 {len(topics_data)} 个话题")
+            info(f"开始处理话题数据，共 {len(topics_data)} 个话题")
             
             # 获取当前日期（只保留到日期部分）
             current_date = datetime.now().date()
@@ -878,7 +879,7 @@ class XhsDAO:
                 ).all()
             }
             
-            logger.info(f"找到 {len(existing_topics)} 条当天已存在的话题记录")
+            info(f"找到 {len(existing_topics)} 条当天已存在的话题记录")
             
             # 存储话题数据
             stored_topics = []
@@ -915,24 +916,24 @@ class XhsDAO:
                         logger.debug(f"创建新话题记录: {topic_item.name}")
                 
                 except Exception as e:
-                    logger.error(f"处理话题时出错 {topic_item.name}: {str(e)}")
+                    error(f"处理话题时出错 {topic_item.name}: {str(e)}")
                     continue
             
             # 提交事务
             try:
                 db.flush()
                 db.commit()
-                logger.info(f"成功处理并存储 {len(stored_topics)} 条话题数据")
+                info(f"成功处理并存储 {len(stored_topics)} 条话题数据")
                 return stored_topics
             except Exception as e:
                 db.rollback()
                 error_detail = f"提交事务时出错: {str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-                logger.error(error_detail)
-                logger.warning("由于事务提交错误，可能有部分数据未能成功存储")
+                error(error_detail)
+                warning("由于事务提交错误，可能有部分数据未能成功存储")
                 return []
                 
         except Exception as e:
             db.rollback()
             error_detail = f"{str(e)}\n{''.join(traceback.format_tb(e.__traceback__))}"
-            logger.error(f"存储话题过程中发生错误: {error_detail}")
+            error(f"存储话题过程中发生错误: {error_detail}")
             raise

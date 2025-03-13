@@ -1,5 +1,9 @@
 import typer
 from app.services.topic_service import TopicService
+from app.utils.logger import get_logger, info, warning, error, debug
+
+# 获取当前模块的日志器
+logger = get_logger(__name__)
 
 app = typer.Typer()
 
@@ -14,7 +18,7 @@ def search_notes_by_topic(
     
     从数据库中找到热门话题，然后获取这些话题的笔记并存储到数据库
     """
-    print(f"开始搜索热门话题笔记，最小浏览量: {min_view_num}，处理话题数量上限: {topic_limit}")
+    info(f"开始搜索热门话题笔记，最小浏览量: {min_view_num}，处理话题数量上限: {topic_limit}")
     
     try:
         # 调用业务逻辑方法
@@ -25,53 +29,53 @@ def search_notes_by_topic(
         )
         
         if processed_topics > 0:
-            print(f"任务完成! 共处理了 {processed_topics} 个话题")
+            info(f"任务完成! 共处理了 {processed_topics} 个话题")
         else:
-            print(f"没有找到符合条件的热门话题")
+            warning(f"没有找到符合条件的热门话题")
     except Exception as e:
-        print(f"执行任务时出错: {e}")
+        error(f"执行任务时出错: {e}")
         import traceback
-        traceback.print_exc()
+        error(traceback.format_exc())
 
 @app.command(name="deal_note_have_detail")
 def deal_note_have_detail():
     """
     从数据库中查询没有详情页的笔记，然后获取详情页
     """
-    print(f"开始搜索没有详情页的笔记")
+    info(f"开始搜索没有详情页的笔记")
     
     try:
         # 调用业务逻辑方法
         processed_notes = TopicService.deal_note_have_detail()
         
         if processed_notes > 0:
-            print(f"任务完成! 共处理了 {processed_notes} 个笔记")
+            info(f"任务完成! 共处理了 {processed_notes} 个笔记")
         else:
-            print(f"没有找到符合条件的热门笔记")
+            warning(f"没有找到符合条件的热门笔记")
     except Exception as e:
-        print(f"执行任务时出错: {e}")
+        error(f"执行任务时出错: {e}")
         import traceback
-        traceback.print_exc()
+        error(traceback.format_exc())
 
 @app.command(name="deal_note_comments")
 def deal_note_comments():
     """
     从数据库中查询没有评论的笔记，然后获取评论
     """
-    print(f"开始搜索没有评论的笔记")
+    info(f"开始搜索没有评论的笔记")
     
     try:
         # 调用业务逻辑方法
         processed_notes = TopicService.deal_note_comments()
         
         if processed_notes > 0:
-            print(f"任务完成! 共处理了 {processed_notes} 个笔记")
+            info(f"任务完成! 共处理了 {processed_notes} 个笔记")
         else:
-            print(f"没有找到符合条件的热门笔记")
+            warning(f"没有找到符合条件的热门笔记")
     except Exception as e:
-        print(f"执行任务时出错: {e}")
+        error(f"执行任务时出错: {e}")
         import traceback
-        traceback.print_exc()
+        error(traceback.format_exc())
 
 if __name__ == "__main__":
     app()
