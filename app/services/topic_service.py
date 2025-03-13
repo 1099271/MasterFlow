@@ -140,7 +140,7 @@ class TopicService:
                     
                 # 随机等待1-5秒
                 sleep_time = random.randint(1, 5)
-                debug(f"等待 {sleep_time} 秒后继续...")
+                info(f"等待 {sleep_time} 秒后继续...")
                 time.sleep(sleep_time)
                 
             info(f"任务完成，共处理 {processed_count} 条笔记")
