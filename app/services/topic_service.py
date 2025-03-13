@@ -128,7 +128,7 @@ class TopicService:
                     logger.info(f"获取笔记详情页成功: {note_url}")
                 else:
                     logger.error(f"获取笔记详情页失败: {note_url}")
-                second = random.randint(10, 30)
+                second = random.randint(1, 5)
                 time.sleep(second)
             return len(result)
         except Exception as e:

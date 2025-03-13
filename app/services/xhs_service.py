@@ -81,6 +81,11 @@ class XhsService:
             解析后的响应对象和请求信息
         """
         if not result or not isinstance(result, dict) or "data" not in result:
+            if result['code'] == 720702222:
+                # We're currently experiencing server issues. Please try your request again after a short delay. If the problem persists, contact our support team.
+                print("Coze服务器正在维护，请稍后再试")
+                return None, {}
+            
             print("未找到data字段或result不是字典")
             print("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
             return None, {}
