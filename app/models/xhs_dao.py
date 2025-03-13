@@ -356,8 +356,8 @@ class XhsDAO:
                         "video_h264_url": None,
                         "video_h265_url": None,
                         "note_duration": None,
-                        "note_image_list": None,
-                        "note_tags": None,
+                        "note_image_list": json.dumps(note_data.note_image_list, ensure_ascii=False) if note_data.note_image_list and len(note_data.note_image_list) > 0 else None,
+                        "note_tags": json.dumps(note_data.note_tags, ensure_ascii=False) if note_data.note_tags and len(note_data.note_tags) > 0 else None,
                         "note_liked": note.note_liked,  # 从笔记中获取是否点赞
                         "collected": False
                     }
@@ -519,8 +519,8 @@ class XhsDAO:
                 "video_h264_url": str(note_data.video_h264_url) if note_data.video_h264_url else None,
                 "video_h265_url": str(note_data.video_h265_url) if note_data.video_h265_url else None,
                 "note_duration": int(note_data.note_duration) if note_data.note_duration and str(note_data.note_duration).isdigit() else None,
-                "note_image_list": json.dumps(note_data.note_image_list, ensure_ascii=False) if note_data.note_image_list else None,
-                "note_tags": json.dumps(note_data.note_tags, ensure_ascii=False) if note_data.note_tags else None,
+                "note_image_list": json.dumps(note_data.note_image_list, ensure_ascii=False) if note_data.note_image_list and len(note_data.note_image_list) > 0 else None,
+                "note_tags": json.dumps(note_data.note_tags, ensure_ascii=False) if note_data.note_tags and len(note_data.note_tags) > 0 else None,
                 "note_liked": bool(note_data.note_liked) if note_data.note_liked is not None else False,
                 "collected": bool(note_data.collected) if note_data.collected is not None else False
             }

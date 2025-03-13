@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import settings
 
 # 创建数据库URL
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}?charset=utf8mb4"
 
 # 创建SQLAlchemy引擎
 engine = create_engine(

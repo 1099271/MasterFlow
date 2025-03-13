@@ -9,6 +9,7 @@ from app.config.settings import settings
 from app.models.xhs_dao import XhsDAO
 from app.models.xhs_models import XhsSearchResponse, XhsNote, XhsAutherNotesResponse, XhsComment, XhsCommentsResponse, XhsNoteDetail, XhsNoteDetailResponse, XhsTopicDiscussion, XhsTopicsResponse
 from app.database.db import get_db
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.utils.logger import get_logger, info, warning, error, debug
 
@@ -390,3 +391,33 @@ class XhsService:
             data_type="话题"
         )
     
+    @staticmethod
+    def fix_note_tags():
+        query = text("""
+            select note_id, note_tags from xhs_note_details where note_tags != 'null'
+                     """)
+        db = next(get_db())
+        result = db.execute(query)
+        notes = [(row[0], row[1]) for row in result]
+        if len(notes) == 0:
+            info("没有需要处理的数据")
+            return []
+        
+        for index, (note_id, note_tags) in enumerate(notes):
+            info(f"处理第 {index} 条数据")
+            try:
+                decode_note_tags = json.loads(note_tags)
+                new_note_tags_str = json.dumps(decode_note_tags, ensure_ascii=False)
+                # 更新数据库中的记录
+                update_query = text("""
+                    UPDATE xhs_note_details 
+                    SET note_tags = :new_note_tags 
+                    WHERE note_id = :note_id
+                """)
+                db.execute(update_query, {"new_note_tags": new_note_tags_str, "note_id": note_id})
+                
+                # 提交更改
+                db.commit()
+            except Exception as e:
+                error(f"出错: {note_id} - {e}")
+                traceback.print_exc()

@@ -1,4 +1,5 @@
 import typer
+from app.services.xhs_service import XhsService
 from app.services.topic_service import TopicService
 from app.utils.logger import get_logger, info, warning, error, debug
 
@@ -75,6 +76,16 @@ def deal_note_comments():
         error(f"执行任务时出错: {e}")
         import traceback
         error(traceback.format_exc())
+        
+@app.command(name="fix_note_tags")
+def fix_note_tags():
+    try:
+        XhsService.fix_note_tags()
+    except Exception as e:
+        error(f"执行任务时出错: {e}")
+        import traceback
+        error(traceback.format_exc())        
+
 
 if __name__ == "__main__":
     app()
