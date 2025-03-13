@@ -433,9 +433,6 @@ class XhsDAO:
             if not note_data or not note_data.note_id:
                 warning("请求体中缺少有效的笔记详情数据")
                 return None
-                
-            info(f"开始处理笔记详情数据，笔记ID: {note_data.note_id}")
-            
             # 处理作者信息
             auther_data = {
                 "auther_user_id": str(note_data.auther_user_id) if note_data.auther_user_id else "",

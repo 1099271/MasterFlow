@@ -125,14 +125,13 @@ class TopicService:
             note_urls = [row[0] for row in result]
             
             info(f"------------ 找到 {len(note_urls)} 条没有详情页的笔记 ----------------")
-
-            for note_url in note_urls:
-                info(f"处理笔记: {note_url}")
+            
+            for index, note_url in enumerate(note_urls):
+                info(f"处理第 {index} 条笔记: {note_url}")
                 # 获取详情页
                 try:
                     detail = XhsService.get_xhs_note_detail(note_url)
                     if detail:
-                        info(f"获取笔记详情页成功: {note_url}")
                         processed_count += 1
                     else:
                         warning(f"获取笔记详情页失败: {note_url}")
