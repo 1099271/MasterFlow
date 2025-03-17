@@ -55,12 +55,11 @@ class XhsService:
             
             # 确保目录存在
             mock_dir = "mock/resp"
-            os.makedirs(mock_dir, exist_ok=True)
-            
+            date = datetime.now().strftime("%Y%m%d")
+            os.makedirs(f"{mock_dir}/{mock_file_prefix}/{date}", exist_ok=True)
             # 生成文件名,使用时间戳避免重名
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{mock_dir}/{mock_file_prefix}/{timestamp}.json"
-            
+            timestamp = datetime.now().strftime("%H%M%S")
+            filename = f"{mock_dir}/{mock_file_prefix}/{date}/{timestamp}.json"
             # 保存响应内容
             with open(filename, "w", encoding="utf-8") as f:
                 json.dump(response.json(), f, ensure_ascii=False, indent=2)
@@ -421,3 +420,59 @@ class XhsService:
             except Exception as e:
                 error(f"出错: {note_id} - {e}")
                 traceback.print_exc()
+                
+    @staticmethod
+    def diagnose_note():
+        query = text("""
+            select n.note_id, n.note_display_title,
+            d.note_desc, d.note_tags, d.comment_count, d.note_liked_count, d.share_count, d.collected_count
+            from xhs_notes as n left join xhs_note_details as d
+            on n.note_id = d.note_id where d.note_desc != '' and d.note_desc is not null 
+            and d.note_create_time >= '2024-01-01'
+            and n.note_id = '67ab7eb0000000002900bf33'
+            """)
+        db = next(get_db())
+        result = db.execute(query)
+        notes = [(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]) for row in result]
+        if len(notes) == 0:
+            info("没有需要处理的数据")
+            return []
+        
+        for index, (note_id, note_display_title, note_desc, note_tags, comment_count, note_liked_count, share_count, collected_count) in enumerate(notes):
+            info(f"处理第 {index} 条数据")
+            # note_tags 处理一下，之前是 Unicode 编码，现在需要处理成中文
+            # decode_note_tags = json.loads(note_tags)
+            # note_tags = json.dumps(decode_note_tags, ensure_ascii=False)
+            note_tags = json.loads(json.loads(note_tags))
+            tags = "/".join(note_tags)
+            try:
+                note_content = f"""【标题】：{note_display_title}
+【描述】：{note_desc}
+【标签】：{tags}
+【互动数据】：点赞 {note_liked_count} / 评论 {comment_count} / 分享 {share_count} / 收藏 {collected_count}"""
+                # 获取LLM模型名称
+                llm_name = "LLM模型名称"
+                # 获取LLM模型版本
+                model_version = "LLM模型版本"
+                # todo 调用LLM模型进行诊断
+                # 获取诊断结果
+                diagnosis_result = "诊断结果"
+                # 获取相关性得分
+                relevance_score = 0.0
+                # 存储诊断结果
+                db.execute(text("""
+                    INSERT INTO llm_note_diagnosis (note_id, llm_name, model_version, relevance_score, diagnosis_result)
+                    VALUES (:note_id, :llm_name, :model_version, :relevance_score, :diagnosis_result)
+                """), {
+                    "note_id": note_id,
+                    "llm_name": llm_name,
+                    "model_version": model_version,
+                    "relevance_score": relevance_score,
+                    "diagnosis_result": diagnosis_result
+                })
+                db.commit()
+            except Exception as e:  
+                error(f"出错: {note_id} - {e}")
+                traceback.print_exc()
+            
+                    

@@ -7,6 +7,7 @@ from app.database.db import get_db
 from app.services.xhs_service import XhsService
 from app.utils.logger import get_logger, info, warning, error, debug
 import traceback
+from rich import print as rich_print
 
 # 获取当前模块的日志器
 logger = get_logger(__name__)
@@ -120,7 +121,7 @@ class TopicService:
                 FROM xhs_notes left join xhs_note_details on xhs_notes.note_id = xhs_note_details.note_id
                 WHERE xhs_note_details.note_desc is null or xhs_note_details.note_id is null
             """)
-
+            
             result = db.execute(query)
             note_urls = [row[0] for row in result]
             
@@ -139,7 +140,7 @@ class TopicService:
                     error(f"获取笔记详情页出错: {note_url} - {e}")
                     
                 # 随机等待1-5秒
-                sleep_time = random.randint(1, 5)
+                sleep_time = random.randint(1, 3)
                 info(f"等待 {sleep_time} 秒后继续...")
                 time.sleep(sleep_time)
                 

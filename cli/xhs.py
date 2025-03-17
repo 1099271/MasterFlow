@@ -86,6 +86,15 @@ def fix_note_tags():
         import traceback
         error(traceback.format_exc())        
 
+@app.command(name="diagnose_note")
+def diagnose_note():
+    try:
+        XhsService.diagnose_note()
+    except Exception as e:
+        error(f"执行任务时出错: {e}")
+        import traceback
+        error(traceback.format_exc())
+
 
 if __name__ == "__main__":
     app()

@@ -10,8 +10,8 @@ from datetime import datetime
 import json
 import traceback
 import uuid
-import sys
 from app.utils.logger import get_logger, info, warning, error, debug
+from rich import print as rich_print
 
 # 获取当前模块的日志器
 logger = get_logger(__name__)
@@ -356,8 +356,8 @@ class XhsDAO:
                         "video_h264_url": None,
                         "video_h265_url": None,
                         "note_duration": None,
-                        "note_image_list": note_data.note_image_list if note_data.note_image_list and len(note_data.note_image_list) > 0 else None,
-                        "note_tags": note_data.note_tags if note_data.note_tags and len(note_data.note_tags) > 0 else None,
+                        "note_image_list": None,
+                        "note_tags": None,
                         "note_liked": note.note_liked,  # 从笔记中获取是否点赞
                         "collected": False
                     }
