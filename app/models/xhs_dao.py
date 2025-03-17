@@ -291,13 +291,13 @@ class XhsDAO:
                             if hasattr(auther, key):
                                 setattr(auther, key, value)
                         auther.updated_at = datetime.now()
-                        logger.debug(f"更新作者信息: {auther.auther_user_id}")
+                        info(f"更新作者信息: {auther.auther_user_id}")
                     else:
                         # 创建新作者
                         auther = XhsAuther(**auther_data)
                         db.add(auther)
                         existing_authers[auther.auther_user_id] = auther
-                        logger.debug(f"创建新作者: {auther.auther_user_id}")
+                        info(f"创建新作者: {auther.auther_user_id}")
                     
                     # 准备笔记数据（确保数值类型正确）
                     note_data = {
@@ -327,13 +327,13 @@ class XhsDAO:
                             if hasattr(note, key):
                                 setattr(note, key, value)
                         note.updated_at = datetime.now()
-                        logger.debug(f"更新笔记: {note.note_id}")
+                        info(f"更新笔记: {note.note_id}")
                     else:
                         # 创建新笔记
                         note = XhsNote(**note_data)
                         db.add(note)
                         existing_notes[note.note_id] = note
-                        logger.debug(f"创建新笔记: {note.note_id}")
+                        info(f"创建新笔记: {note.note_id}")
                     
                     # 同步存储或更新笔记详情
                     note_detail_data = {
@@ -356,8 +356,8 @@ class XhsDAO:
                         "video_h264_url": None,
                         "video_h265_url": None,
                         "note_duration": None,
-                        "note_image_list": json.dumps(note_data.note_image_list, ensure_ascii=False) if note_data.note_image_list and len(note_data.note_image_list) > 0 else None,
-                        "note_tags": json.dumps(note_data.note_tags, ensure_ascii=False) if note_data.note_tags and len(note_data.note_tags) > 0 else None,
+                        "note_image_list": note_data.note_image_list if note_data.note_image_list and len(note_data.note_image_list) > 0 else None,
+                        "note_tags": note_data.note_tags if note_data.note_tags and len(note_data.note_tags) > 0 else None,
                         "note_liked": note.note_liked,  # 从笔记中获取是否点赞
                         "collected": False
                     }
@@ -370,12 +370,12 @@ class XhsDAO:
                             if hasattr(note_detail, key):
                                 setattr(note_detail, key, value)
                         note_detail.updated_at = datetime.now()
-                        logger.debug(f"更新笔记详情: {note_detail.note_id}")
+                        info(f"更新笔记详情: {note_detail.note_id}")
                     else:
                         # 创建新笔记详情
                         note_detail = XhsNoteDetail(**note_detail_data)
                         db.add(note_detail)
-                        logger.debug(f"创建新笔记详情: {note_detail.note_id}")
+                        info(f"创建新笔记详情: {note_detail.note_id}")
 
                     stored_notes.append(note)
                     
@@ -389,7 +389,7 @@ class XhsDAO:
                             )
                             db.add(association)
                             existing_associations.add(note.note_id)
-                            logger.debug(f"创建关键词关联: {note.note_id} -> {keywords}")
+                            info(f"创建关键词关联: {note.note_id} -> {keywords}")
                         except Exception as e:
                             error(f"创建关键词关联时出错: {str(e)}")
                 
@@ -519,8 +519,8 @@ class XhsDAO:
                 "video_h264_url": str(note_data.video_h264_url) if note_data.video_h264_url else None,
                 "video_h265_url": str(note_data.video_h265_url) if note_data.video_h265_url else None,
                 "note_duration": int(note_data.note_duration) if note_data.note_duration and str(note_data.note_duration).isdigit() else None,
-                "note_image_list": json.dumps(note_data.note_image_list, ensure_ascii=False) if note_data.note_image_list and len(note_data.note_image_list) > 0 else None,
-                "note_tags": json.dumps(note_data.note_tags, ensure_ascii=False) if note_data.note_tags and len(note_data.note_tags) > 0 else None,
+                "note_image_list": note_data.note_image_list if note_data.note_image_list and len(note_data.note_image_list) > 0 else None,
+                "note_tags": note_data.note_tags if note_data.note_tags and len(note_data.note_tags) > 0 else None,
                 "note_liked": bool(note_data.note_liked) if note_data.note_liked is not None else False,
                 "collected": bool(note_data.collected) if note_data.collected is not None else False
             }
@@ -533,12 +533,12 @@ class XhsDAO:
                     if hasattr(note_detail, key):
                         setattr(note_detail, key, value)
                 note_detail.updated_at = datetime.now()
-                logger.debug(f"更新笔记详情: {note_detail.note_id}")
+                info(f"更新笔记详情: {note_detail.note_id}")
             else:
                 # 创建新笔记详情
                 note_detail = XhsNoteDetail(**note_detail_data)
                 db.add(note_detail)
-                logger.debug(f"创建新笔记详情: {note_detail.note_id}")
+                info(f"创建新笔记详情: {note_detail.note_id}")
             
             # 提交事务
             try:
@@ -701,7 +701,7 @@ class XhsDAO:
             db.add(comment)
             db.flush()
             existing_comments[comment.comment_id] = comment
-            logger.debug(f"创建新评论: {comment.comment_id}")
+            info(f"创建新评论: {comment.comment_id}")
         else:
             # 更新现有评论
             comment.note_id = comment_item.note_id
@@ -719,7 +719,7 @@ class XhsDAO:
             comment.comment_sub_comment_cursor = comment_item.comment_sub_comment_cursor
             comment.comment_sub_comment_has_more = comment_item.comment_sub_comment_has_more
             comment.updated_at = datetime.now()
-            logger.debug(f"更新评论: {comment.comment_id}")
+            info(f"更新评论: {comment.comment_id}")
         
         return comment
     
@@ -744,12 +744,12 @@ class XhsDAO:
             )
             db.add(at_user)
             db.flush()
-            logger.debug(f"创建新的@用户关系: {comment_id} -> {at_user_item.at_user_id}")
+            info(f"创建新的@用户关系: {comment_id} -> {at_user_item.at_user_id}")
         else:
             # 更新现有@用户关系
             at_user.at_user_nickname = at_user_item.at_user_nickname
             at_user.at_user_home_page_url = at_user_item.at_user_home_page_url
-            logger.debug(f"更新@用户关系: {comment_id} -> {at_user_item.at_user_id}")
+            info(f"更新@用户关系: {comment_id} -> {at_user_item.at_user_id}")
         
         return at_user 
 
@@ -897,7 +897,7 @@ class XhsDAO:
                         existing_topic.topic_type = topic_item.type
                         existing_topic.view_num = view_num
                         existing_topic.smart = smart
-                        logger.debug(f"更新话题记录: {topic_item.name}")
+                        info(f"更新话题记录: {topic_item.name}")
                         stored_topics.append(existing_topic)
                     else:
                         # 创建新记录
@@ -910,7 +910,7 @@ class XhsDAO:
                         )
                         db.add(new_topic)
                         stored_topics.append(new_topic)
-                        logger.debug(f"创建新话题记录: {topic_item.name}")
+                        info(f"创建新话题记录: {topic_item.name}")
                 
                 except Exception as e:
                     error(f"处理话题时出错 {topic_item.name}: {str(e)}")
