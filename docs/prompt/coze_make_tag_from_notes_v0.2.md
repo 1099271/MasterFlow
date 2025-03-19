@@ -51,7 +51,7 @@
 
 {
   "keywords": {
-    "localtion": ["标签1", "标签2", "标签3", ...],
+    "location": ["标签1", "标签2", "标签3", ...],
     "culture": ["标签1", "标签2", "标签3", ...],
     "others": ["标签1", "标签2", "标签3", ...]
   },
@@ -66,6 +66,7 @@
       "instra": "2-3句话总结帖子核心内容",
       "preference": "正面/中性/负面",
       "preference_reason": "简要说明原因"
+      "has_visited": True/False
     }
   }
 }
