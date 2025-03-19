@@ -10,7 +10,6 @@ from app.models.xhs_dao import XhsDAO
 from app.models.xhs_models import XhsSearchResponse, XhsNote, XhsAutherNotesResponse, XhsComment, XhsCommentsResponse, XhsNoteDetail, XhsNoteDetailResponse, XhsTopicDiscussion, XhsTopicsResponse
 from app.database.db import get_db
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 from app.utils.logger import get_logger, info, warning, error, debug
 from rich import print as rich_print
 
@@ -423,14 +422,15 @@ class XhsService:
                 traceback.print_exc()
                 
     @staticmethod
-    def diagnose_note():
+    def export_note_content():
         query = text("""
             select n.note_id, n.note_display_title,
             d.note_desc, d.note_tags, d.comment_count, d.note_liked_count, d.share_count, d.collected_count
             from xhs_notes as n left join xhs_note_details as d
             on n.note_id = d.note_id where d.note_desc != '' and d.note_desc is not null 
             and d.note_create_time >= '2024-01-01'
-            and n.note_id = '67ab7eb0000000002900bf33'
+            and d.note_tags is not null
+            limit 100
             """)
         db = next(get_db())
         result = db.execute(query)
@@ -441,36 +441,59 @@ class XhsService:
         
         for index, (note_id, note_display_title, note_desc, note_tags, comment_count, note_liked_count, share_count, collected_count) in enumerate(notes):
             info(f"处理第 {index} 条数据")
-            note_tags = json.loads(json.loads(note_tags))
-            tags = "/".join(note_tags)
             try:
-                note_content = f"""【标题】：{note_display_title}
+                note_tags = XhsService.process_note_tags(note_tags)
+                tags = "/".join(note_tags)
+                note_content = f"""
+【标题】：{note_display_title}
 【描述】：{note_desc}
 【标签】：{tags}
 【互动数据】：点赞 {note_liked_count} / 评论 {comment_count} / 分享 {share_count} / 收藏 {collected_count}"""
-                # 获取LLM模型名称
-                llm_name = "LLM模型名称"
-                # 获取LLM模型版本
-                model_version = "LLM模型版本"
-                # todo 调用LLM模型进行诊断
-                # 获取诊断结果
-                diagnosis_result = "诊断结果"
-                # 获取相关性得分
-                relevance_score = 0.0
-                # 存储诊断结果
-                db.execute(text("""
-                    INSERT INTO llm_note_diagnosis (note_id, llm_name, model_version, relevance_score, diagnosis_result)
-                    VALUES (:note_id, :llm_name, :model_version, :relevance_score, :diagnosis_result)
-                """), {
-                    "note_id": note_id,
-                    "llm_name": llm_name,
-                    "model_version": model_version,
-                    "relevance_score": relevance_score,
-                    "diagnosis_result": diagnosis_result
-                })
-                db.commit()
+                # 确保目录存在
+                log_dir = "logs/note_content"
+                date = datetime.now().strftime("%Y%m%d")
+                os.makedirs(f"{log_dir}/{date}", exist_ok=True)
+                
+                filename = f"{log_dir}/{date}/normal_level_note_content.txt"
+                
+                # 保存笔记内容
+                # 追加写入笔记内容
+                with open(filename, "a", encoding="utf-8") as f:
+                    f.write(note_content + "\n<|next_post|>\n")
+                    
+                info(f"笔记内容已保存到: {filename}")
             except Exception as e:  
                 error(f"出错: {note_id} - {e}")
                 traceback.print_exc()
+    
+    @staticmethod
+    def process_note_tags(note_tags):
+        try:
             
+            # 情况 1：如果已经是列表，直接返回
+            if isinstance(note_tags, list):
+                return note_tags
+            
+            # 情况 2：尝试第一次解析
+            try:
+                note_tags = json.loads(note_tags)
+            except json.JSONDecodeError:
+                # 如果解析失败，说明 note_tags 不是有效的 JSON 字符串
+                raise ValueError("note_tags 不是有效的 JSON 字符串")
+            
+            # 情况 3：检查是否需要第二次解析
+            if isinstance(note_tags, str):
+                # 如果解析后仍然是字符串，尝试再次解析
+                note_tags = json.loads(note_tags)
+            
+            # 确保最终结果是列表
+            if not isinstance(note_tags, list):
+                raise ValueError("解析后的 note_tags 不是列表")
+            
+            return note_tags
+        
+        except Exception as e:
+            error(f"处理 note_tags 出错: {e}")
+            raise
+        
                     

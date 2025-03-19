@@ -12,13 +12,13 @@ MasterFlow是一个基于FastAPI开发的市场营销工作流管理系统，旨
 - 后端框架：FastAPI
 - 数据库：MySQL
 - ORM：SQLAlchemy
-- 数据库迁移：Alembic
 - 认证：JWT (JSON Web Tokens)
 - 其他工具：Python-dotenv, Pydantic, Uvicorn
 
 ## 环境要求
 - Python 3.8+
 - MySQL 5.7+
+- Torch 2.6.0+cu126
 
 ## 部署步骤
 

@@ -16,6 +16,30 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `llm_configurations`
+--
+
+DROP TABLE IF EXISTS `llm_configurations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `llm_configurations` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `config_alias` varchar(128) NOT NULL COMMENT '配置别名，唯一标识，用于与诊断和标签提取挂钩',
+  `model_name` varchar(128) NOT NULL COMMENT '模型名称',
+  `parameter_size` varchar(64) NOT NULL COMMENT '模型参数大小（例如 7B, 13B, 175B）',
+  `temperature` decimal(3,2) DEFAULT NULL COMMENT '温度设置',
+  `top_p` decimal(3,2) DEFAULT NULL,
+  `max_tokens` int DEFAULT NULL,
+  `model_type` varchar(32) DEFAULT NULL,
+  `other_params` json DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_config_alias` (`config_alias`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM模型配置表，用于存储模型名称、参数大小、温度设置、类型等参数，作为 llm_note_tag_extraction 与 llm_note_diagnosis 的挂钩依据';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `llm_note_diagnosis`
 --
 
@@ -26,15 +50,44 @@ CREATE TABLE `llm_note_diagnosis` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `note_id` varchar(64) NOT NULL COMMENT '笔记ID，关联 xhs_notes(note_id)',
   `llm_name` varchar(128) NOT NULL COMMENT 'LLM模型名称',
-  `model_version` varchar(64) DEFAULT NULL COMMENT 'LLM模型版本',
-  `relevance_score` decimal(5,2) NOT NULL COMMENT '相关性得分',
-  `diagnosis_result` text COMMENT '模型诊断反馈结果（文本描述）',
+  `geo_tags` json DEFAULT NULL COMMENT '提取的地理位置标签',
+  `cultural_tags` json DEFAULT NULL COMMENT '提取的文化元素标签',
+  `other_tags` json DEFAULT NULL COMMENT '提取的其他方面标签',
+  `user_gender` varchar(16) DEFAULT NULL COMMENT '推断的性别',
+  `user_age_range` varchar(64) DEFAULT NULL COMMENT '推断的年龄区间',
+  `user_location` varchar(128) DEFAULT NULL COMMENT '推断的地理位置',
+  `user_tags` json DEFAULT NULL COMMENT '用户特征标签',
+  `post_summary` json DEFAULT NULL COMMENT '2-3句话总结帖子核心内容',
+  `post_publish_time` varchar(64) DEFAULT NULL COMMENT '推断的发布时间或 "未知"',
+  `content_tendency` varchar(16) DEFAULT NULL COMMENT '内容偏向性（正面/中性/负面）',
+  `content_tendency_reason` json DEFAULT NULL COMMENT '内容偏向性原因',
+  `has_visited` tinyint(1) DEFAULT NULL COMMENT '是否去过（1:是, 0:否）',
   `diagnosed_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '诊断时间',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
   PRIMARY KEY (`id`),
   KEY `idx_note_id` (`note_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM笔记诊断与反馈表，用于存储大模型对笔记的判断和反馈';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM笔记诊断与反馈表，用于存储大模型对笔记的判断和反馈，包括关键词提取和数据信息';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `llm_note_tag_extraction`
+--
+
+DROP TABLE IF EXISTS `llm_note_tag_extraction`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `llm_note_tag_extraction` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `note_id` varchar(64) NOT NULL COMMENT '笔记ID，关联 xhs_notes(note_id)',
+  `model_name` varchar(128) NOT NULL COMMENT '提取标签所用的模型名称',
+  `extracted_tags` json NOT NULL COMMENT '抽取的标签集合，JSON 格式，例如 [{"tag": "标签1", "score": 0.95}, {"tag": "标签2", "score": 0.87}]',
+  `extraction_result` text COMMENT '模型对笔记内容的整体反馈描述（可选）',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_note_id_model` (`note_id`,`model_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM 对笔记标签提取结果表，用于存储模型对笔记内容的标签提取情况';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -253,4 +306,4 @@ CREATE TABLE `xhs_topic_discussions` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-03-17 16:47:58
+-- Dump completed on 2025-03-19 20:13:07

@@ -86,10 +86,10 @@ def fix_note_tags():
         import traceback
         error(traceback.format_exc())        
 
-@app.command(name="diagnose_note")
-def diagnose_note():
+@app.command(name="export_note_content")
+def export_note_content():
     try:
-        XhsService.diagnose_note()
+        XhsService.export_note_content()
     except Exception as e:
         error(f"执行任务时出错: {e}")
         import traceback
