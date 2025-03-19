@@ -42,7 +42,7 @@ class TagService:
                     select note_id, note_display_title, note_desc
                     from xhs_note_details
                     where note_desc != '' and note_desc is not null 
-                    and note_create_time >= '2024-01-01'
+                    and note_create_time >= '2023-01-01'
                     and note_id = :note_id
             """)
                 result = db.execute(query, {"note_id": note_id})
@@ -51,7 +51,7 @@ class TagService:
                     select note_id, note_display_title, note_desc
                     from xhs_note_details
                     where note_desc != '' and note_desc is not null 
-                    and note_create_time >= '2024-01-01'
+                    and note_create_time >= '2023-01-01'
                 """)
                 result = db.execute(query)
             
