@@ -24,13 +24,12 @@ class LlmDAO:
             user_data = diagnosis_data.get('data', {}).get('user', {})
             note_data = diagnosis_data.get('data', {}).get('note', {})
             
+            has_visited = False
             if note_data.get('has_visited'):
                 if isinstance(note_data.get('has_visited'), str):
                     has_visited = note_data.get('has_visited').lower() == "true"
                 elif isinstance(note_data.get('has_visited'), bool):
                     has_visited = note_data.get('has_visited')
-                else:
-                    has_visited = False
             
             diagnosis_dict = {
                 "note_id": note_id,

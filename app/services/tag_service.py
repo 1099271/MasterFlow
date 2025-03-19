@@ -74,7 +74,7 @@ class TagService:
                         parameters=parameters,
                         log_file_prefix="make_tags_from_note"
                     )
-                    # with open(f"logs/coze_http_request/make_tags_from_note/20250319/205306.json", "r", encoding="utf-8") as f:
+                    # with open(f"logs/coze_http_request/make_tags_from_note/20250319/213740.json", "r", encoding="utf-8") as f:
                         # result = json.load(f)
                     data_json = json.loads(result["data"])
                     response_text = data_json["data"]
