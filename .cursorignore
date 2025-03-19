@@ -1,2 +1,6 @@
 .venv
-mock/
+logs/
+.cursor/
+.cursorignore
+.cursorrules
+docs/coze/

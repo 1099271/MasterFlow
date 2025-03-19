@@ -95,5 +95,5 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
   - `app/config`: 配置文件
   - `app/database`: 数据库配置
   - `app/utils`: 工具函数
-  - `migrations`: 数据库迁移文件
-  - `mock`: 模拟数据和API文档
+  - `docs`: 数据库设计和接口文档
+  - `logs`: 日志目录

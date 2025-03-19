@@ -12,6 +12,7 @@ from app.database.db import get_db
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.utils.logger import get_logger, info, warning, error, debug
+from rich import print as rich_print
 
 # 获取当前模块的日志器
 logger = get_logger(__name__)
@@ -22,14 +23,14 @@ class XhsService:
     """小红书服务类，处理与小红书相关的业务逻辑"""
     
     @staticmethod
-    def _call_coze_api(workflow_id: str, parameters: Dict[str, Any], mock_file_prefix: str) -> Dict[str, Any]:
+    def _call_coze_api(workflow_id: str, parameters: Dict[str, Any], log_file_prefix: str) -> Dict[str, Any]:
         """
         调用Coze API并保存响应
         
         Args:
             workflow_id: 工作流ID
             parameters: API参数
-            mock_file_prefix: mock文件前缀
+            log_file_prefix: log文件前缀
             
         Returns:
             API响应结果
@@ -54,12 +55,12 @@ class XhsService:
             response.raise_for_status()  # 如果请求失败，抛出异常
             
             # 确保目录存在
-            mock_dir = "mock/resp"
+            log_dir = "logs/coze_http_request"
             date = datetime.now().strftime("%Y%m%d")
-            os.makedirs(f"{mock_dir}/{mock_file_prefix}/{date}", exist_ok=True)
+            os.makedirs(f"{log_dir}/{log_file_prefix}/{date}", exist_ok=True)
             # 生成文件名,使用时间戳避免重名
             timestamp = datetime.now().strftime("%H%M%S")
-            filename = f"{mock_dir}/{mock_file_prefix}/{date}/{timestamp}.json"
+            filename = f"{log_dir}/{log_file_prefix}/{date}/{timestamp}.json"
             # 保存响应内容
             with open(filename, "w", encoding="utf-8") as f:
                 json.dump(response.json(), f, ensure_ascii=False, indent=2)
@@ -191,7 +192,7 @@ class XhsService:
         result = XhsService._call_coze_api(
             workflow_id="7480441452158648331",
             parameters=parameters,
-            mock_file_prefix="xhs_search"
+            log_file_prefix="get_notes_by_tag"
         )
         
         # 处理响应
@@ -236,7 +237,7 @@ class XhsService:
         result = XhsService._call_coze_api(
             workflow_id="7480852360857714739",
             parameters=parameters,
-            mock_file_prefix="xhs_get_notes_by_auther"
+            log_file_prefix="xhs_get_notes_by_auther"
         )
         
         # 处理响应
@@ -282,7 +283,7 @@ class XhsService:
         result = XhsService._call_coze_api(
             workflow_id="7480889721393152035",
             parameters=parameters,
-            mock_file_prefix="xhs_get_comments_by_note"
+            log_file_prefix="xhs_get_comments_by_note"
         )
         
         # 处理响应
@@ -327,7 +328,7 @@ class XhsService:
         result = XhsService._call_coze_api(
             workflow_id="7480895021278920716",
             parameters=parameters,
-            mock_file_prefix="xhs_get_note_detail"
+            log_file_prefix="xhs_get_note_detail"
         )
         
         # 处理响应
@@ -369,7 +370,7 @@ class XhsService:
         result = XhsService._call_coze_api(
             workflow_id="7480898701533397031",
             parameters=parameters,
-            mock_file_prefix="xhs_get_topics"
+            log_file_prefix="xhs_get_topics"
         )
         
         # 处理响应
@@ -440,9 +441,6 @@ class XhsService:
         
         for index, (note_id, note_display_title, note_desc, note_tags, comment_count, note_liked_count, share_count, collected_count) in enumerate(notes):
             info(f"处理第 {index} 条数据")
-            # note_tags 处理一下，之前是 Unicode 编码，现在需要处理成中文
-            # decode_note_tags = json.loads(note_tags)
-            # note_tags = json.dumps(decode_note_tags, ensure_ascii=False)
             note_tags = json.loads(json.loads(note_tags))
             tags = "/".join(note_tags)
             try:

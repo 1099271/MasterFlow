@@ -183,3 +183,9 @@ site/
 # Misc
 .DS_Store
 Thumbs.db
+
+
+# cursor
+.cursorrules
+.cursorignore
+.cursor/

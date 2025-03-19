@@ -25,3 +25,11 @@ requests==2.32.2
 # 日志和调试
 loguru==0.7.2
 email_validator==2.2.0
+
+# cuda
+torch==2.6.0+cu126
+torchvision==0.21.0+cu126
+torchaudio==2.6.0+cu126
+
+# 其他
+numpy==1.26.4
