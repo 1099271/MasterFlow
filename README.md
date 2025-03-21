@@ -74,6 +74,8 @@ DEBUG=True
 ```sql
 CREATE DATABASE masterflow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
+2. 具体数据库内容参考
+> docs/database/xhs_database.sql
 
 
 ### 6. 启动应用
