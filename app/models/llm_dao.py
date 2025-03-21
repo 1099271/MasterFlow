@@ -16,7 +16,8 @@ class LlmDAO:
         try:
             # 检查是否已存在诊断记录
             diagnosis = db.query(LlmNoteDiagnosis).filter(
-                LlmNoteDiagnosis.note_id == note_id
+                LlmNoteDiagnosis.note_id == note_id,
+                LlmNoteDiagnosis.llm_name == llm_name
             ).first()
             
             # 准备数据

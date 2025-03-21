@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import json
 import traceback
@@ -20,9 +21,10 @@ T = TypeVar('T')
 
 class XhsService:
     """小红书服务类，处理与小红书相关的业务逻辑"""
+    max_retries = 5
     
     @staticmethod
-    def _call_coze_api(workflow_id: str, parameters: Dict[str, Any], log_file_prefix: str) -> Dict[str, Any]:
+    def _call_coze_api(workflow_id: str, parameters: Dict[str, Any], log_file_prefix: str, retries: int = 0) -> Dict[str, Any]:
         """
         调用Coze API并保存响应
         
@@ -63,9 +65,23 @@ class XhsService:
             # 保存响应内容
             with open(filename, "w", encoding="utf-8") as f:
                 json.dump(response.json(), f, ensure_ascii=False, indent=2)
-                
-            return response.json()
             
+            resp_json = response.json()
+            # 根据响应状态码处理逻辑
+            match resp_json.get("code"):
+                case 4013:
+                    # 请求频率超出限制，等待60秒后重试
+                    time.sleep(60)
+                    return XhsService._call_coze_api(workflow_id, parameters, log_file_prefix, retries + 1)
+                case 720702222:
+                    # We're currently experiencing server issues. Please try your request again after a short delay. If the problem persists, contact our support team.
+                    time.sleep(120)
+                    return XhsService._call_coze_api(workflow_id, parameters, log_file_prefix, retries + 1)
+                case _:
+                    if resp_json.get("code") != 0:
+                        error(f"请求Coze出现异常:{resp_json.get('code')}|{resp_json.get('msg')}")
+                    return resp_json
+                
         except Exception as e:
             error(f"调用Coze API失败: {e}")
             traceback.print_exc()
@@ -83,16 +99,6 @@ class XhsService:
         Returns:
             解析后的响应对象和请求信息
         """
-        if not result or not isinstance(result, dict) or "data" not in result:
-            if result['code'] == 720702222:
-                # We're currently experiencing server issues. Please try your request again after a short delay. If the problem persists, contact our support team.
-                warning("Coze服务器正在维护，请稍后再试")
-                return None, {}
-            
-            error("未找到data字段或result不是字典")
-            info("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))
-            return None, {}
-            
         if not isinstance(result["data"], str):
             error("data字段不是字符串")
             info("返回的完整数据:", json.dumps(result, ensure_ascii=False, indent=2))

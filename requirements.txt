@@ -33,3 +33,5 @@ torchaudio==2.6.0+cu126
 
 # 其他
 numpy==1.26.4
+sentence-transformers==3.4.1
+openai==1.66.0

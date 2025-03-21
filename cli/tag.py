@@ -20,6 +20,13 @@ def make_tags_from_note(note_id: str = typer.Option(None, "--note_id", help="笔
     给指定的笔记提取标签
     """
     TagService.make_tags_from_note(note_id)
+    
+@app.command(name="similar_tag")
+def similar_tag():
+    """
+    给标签做相似度匹配
+    """
+    TagService.similar_tag()
 
 if __name__ == "__main__":
     app()
