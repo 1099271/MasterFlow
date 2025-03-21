@@ -27,6 +27,20 @@ def similar_tag():
     给标签做相似度匹配
     """
     TagService.similar_tag()
+    
+@app.command(name="analyse_tag_similarity")
+def analyse_tag_similarity(note_id: str = typer.Option(None, "--note_id", help="笔记ID")):
+    """
+    分析标签相似度
+    """
+    # 创建 TagService 实例
+    tag_service = TagService()
+    
+    # 初始化标准标签
+    # tag_service.init_standard_tags()
+    
+    # 分析标签相似度
+    tag_service.analyse_tag_similarity(note_id)
 
 if __name__ == "__main__":
     app()

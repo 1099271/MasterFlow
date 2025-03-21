@@ -1,6 +1,7 @@
+import os
 import json
 import traceback
-from typing import Dict, Any, List, Optional, Tuple, Type, TypeVar, Generic, Callable
+from typing import Dict, Any, List, Optional, Tuple, TypeVar, Generic, Callable
 
 import numpy as np
 from sentence_transformers import SentenceTransformer, util
@@ -11,15 +12,20 @@ from sqlalchemy import text
 from app.services.llm_service import LlmService
 from app.services.tag_comparison.tag_similarity_analyzer import TagSimilarityAnalyzer
 from app.services.xhs_service import XhsService
+from app.database.tag_dao import TagDAO
 from app.utils.logger import get_logger, info, warning, error, debug
 
 from rich import print as rich_print
 
+os.environ['NUMEXPR_MAX_THREADS'] = '16'
 logger = get_logger(__name__)
 
 T = TypeVar('T')
 
 class TagService:
+    def __init__(self):
+        self.analyzer = TagSimilarityAnalyzer()
+        self.tag_dao = TagDAO()
     
     @staticmethod
     def get_tags_from_db():
@@ -97,6 +103,77 @@ class TagService:
                 
         return []
     
+    def compare_and_save_tags(self, note_id: str, llm_name: str, collected_tags: Dict[str, List[str]]) -> Dict[str, Any]:
+        """
+        比较标签并保存结果
+        
+        Args:
+            note_id: 笔记ID
+            llm_name: LLM模型名称
+            collected_tags: 收集到的标签，格式为 {"geo": [...], "cultural": [...]}
+            
+        Returns:
+            包含各类标签对比结果的字典
+        """
+        results = {}
+        db = next(get_db())
+        
+        try:
+            for tag_type, tags in collected_tags.items():
+                # 获取标准标签
+                standard_tags = self.tag_dao.get_standard_tags(tag_type)
+                
+                # 进行标签对比
+                comparison_result = self.analyzer.compare_tags(
+                    collected_tags=tags,
+                    standard_tags=standard_tags,
+                    visualize=False
+                )
+                
+                # 保存结果到数据库
+                scores = comparison_result.get('detailed_scores', {})
+                success = self.tag_dao.save_comparison_result(
+                    db=db,
+                    note_id=note_id,
+                    llm_name=llm_name,
+                    tag_type=tag_type,
+                    collected_tags=comparison_result.get('collected_tags', []),
+                    standard_tags=comparison_result.get('standard_tags', []),
+                    similarity_matrix=comparison_result.get('similarity_matrix', np.array([[0]])).tolist(),
+                    scores={
+                        'max_similarity': scores.get('max_similarity', 0.0),
+                        'optimal_matching': scores.get('optimal_matching', 0.0),
+                        'threshold_matching': scores.get('threshold_matching', 0.0),
+                        'average_similarity': scores.get('average_similarity', 0.0),
+                        'coverage': scores.get('coverage', 0.0)
+                    },
+                    weighted_score=comparison_result.get('score', 0),
+                    interpretation=self.analyzer.get_interpretation(comparison_result.get('score', 0)),
+                    compare_model_name=self.analyzer.model_name
+                )
+                
+                if not success:
+                    raise Exception(f"保存标签对比结果失败: {note_id} - {tag_type}")
+                
+                results[tag_type] = comparison_result
+            
+            return results
+        finally:
+            db.close()
+    
+    def get_tag_comparison_results(self, note_id: str, llm_name: str = None) -> List[Dict[str, Any]]:
+        """
+        获取笔记的标签对比结果
+        
+        Args:
+            note_id: 笔记ID
+            llm_name: 可选的LLM模型名称过滤
+            
+        Returns:
+            标签对比结果列表
+        """
+        return self.tag_dao.get_comparison_results(note_id, llm_name)
+    
     @staticmethod
     def _req_coze_api(note_content: str, note_id: str):
         """
@@ -121,64 +198,137 @@ class TagService:
             response_text = response_text.strip("```json").strip("```").strip()
         return response_text
     
-    @staticmethod
-    def similar_tag():
-        model = SentenceTransformer('BAAI/bge-large-zh-v1.5')
-        # 示例标签
-        tag1 = "护肤"
-        tag2 = "美白精华"
-
-        embedding1 = model.encode(tag1)
-        embedding2 = model.encode(tag2)
-
-        similarity = util.cos_sim(embedding1, embedding2).item()
-        rich_print(similarity)
-        return []
-    
-    @staticmethod
-    def analyse_tag_similarity():
-        # 标准标签组
-        standard_geo_tags = ["泸沽湖", "温泉村", "瓦拉壁", "云南", "丽江", "四川", "里格", "大落水", "摩梭村"]
-        standard_cultural_tags = ["摩梭族", "走婚", "成丁礼", "成年礼", "阿妈", "阿乌", "格姆女神", "女权主义", "母系氏族", "大家庭", "藏传佛教", "民族服饰"]
+    def analyse_tag_similarity(self, note_id: str = None, llm_name: str = None):
+        """
+        分析标签相似度并存储结果
         
-        # 收集的标签示例
-        geo_tags = ["泸沽湖", "云南风景", "丽江古城", "高原湖泊"]
-        cultural_tags = ["摩梭文化", "母系社会", "走婚制度", "民族传统", "藏族文化"]
+        Args:
+            note_id (str, optional): 指定笔记ID，如果为None则分析所有未分析的笔记
+            llm_name (str, optional): 指定LLM模型名称进行过滤
+        """
+        db = next(get_db())
+        try:
+            # 查询需要分析的笔记
+            if note_id:
+                query = text("""
+                    SELECT d.note_id, l.llm_name, 
+                           l.geo_tags, l.cultural_tags
+                    FROM llm_note_diagnosis l
+                    JOIN xhs_note_details d ON l.note_id = d.note_id
+                    LEFT JOIN tag_comparison_results t 
+                        ON l.note_id = t.note_id 
+                        AND l.llm_name = t.llm_name
+                    WHERE d.note_id = :note_id
+                    -- AND t.id IS NULL
+                """)
+                result = db.execute(query, {"note_id": note_id})
+            else:
+                query = text("""
+                    SELECT d.note_id, l.llm_name, 
+                           l.geo_tags, l.cultural_tags
+                    FROM llm_note_diagnosis l
+                    JOIN xhs_note_details d ON l.note_id = d.note_id
+                    LEFT JOIN tag_comparison_results t 
+                        ON l.note_id = t.note_id 
+                        AND l.llm_name = t.llm_name
+                    WHERE t.id IS NULL
+                    AND (:llm_name IS NULL OR l.llm_name = :llm_name)
+                """)
+                result = db.execute(query, {"llm_name": llm_name})
+            
+            notes = [(row[0], row[1], json.loads(row[2]) if row[2] else [], 
+                     json.loads(row[3]) if row[3] else []) for row in result]
+            
+            if not notes:
+                info("没有需要分析的笔记")
+                return
+            
+            total = len(notes)
+            for idx, (note_id, llm_name, geo_tags, cultural_tags) in enumerate(notes, 1):
+                info(f"正在处理 {idx}/{total}: {note_id} - {llm_name}")
+                
+                # 处理可能的字符串列表问题
+                if isinstance(geo_tags, str):
+                    try:
+                        geo_tags = json.loads(geo_tags)
+                    except:
+                        # 如果是一个字符串，尝试将其转换为列表
+                        geo_tags = [tag.strip() for tag in geo_tags.strip('[]').replace('"', '').split(',') if tag.strip()]
+                
+                if isinstance(cultural_tags, str):
+                    try:
+                        cultural_tags = json.loads(cultural_tags)
+                    except:
+                        # 如果是一个字符串，尝试将其转换为列表
+                        cultural_tags = [tag.strip() for tag in cultural_tags.strip('[]').replace('"', '').split(',') if tag.strip()]
+                
+                try:
+                    # 准备标签数据
+                    collected_tags = {
+                        "geo": geo_tags,
+                        "cultural": cultural_tags
+                    }
+                    
+                    # 执行对比并保存
+                    results = self.compare_and_save_tags(
+                        note_id=note_id,
+                        llm_name=llm_name,
+                        collected_tags=collected_tags
+                    )
+                    
+                    # 打印分析结果
+                    print(f"\n=== {note_id} 标签相似度分析结果 ===")
+                    for tag_type, result in results.items():
+                        print(f"\n【{tag_type}】")
+                        print(f"相似度得分: {result['score']:.2f}")
+                        print(f"解释: {self.analyzer.get_interpretation(result['score'])}")
+                        print("\n收集标签:", ", ".join(result['collected_tags']))
+                        print("标准标签:", ", ".join(result['standard_tags']))
+                        print("\n详细得分:")
+                        for metric, score in result['detailed_scores'].items():
+                            print(f"  - {metric}: {score:.2f}")
+                        print("="*50)
+                    
+                except Exception as e:
+                    error(f"处理笔记 {note_id} 时出错: {str(e)}")
+                    traceback.print_exc()
+                    continue
+                
+        except Exception as e:
+            error(f"标签分析过程出错: {str(e)}")
+            traceback.print_exc()
+        finally:
+            db.close()
+            
+    def init_standard_tags(self):
+        """初始化标准标签到数据库"""
+        standard_tags = {
+            "geo": [
+                "泸沽湖", "温泉村", "瓦拉壁", "云南", "丽江", 
+                "四川", "里格", "大落水", "摩梭村"
+            ],
+            "cultural": [
+                "摩梭族", "走婚", "成丁礼", "成年礼", "阿妈", 
+                "阿乌", "格姆女神", "女权主义", "母系氏族", 
+                "大家庭", "藏传佛教", "民族服饰"
+            ]
+        }
         
-        # 创建分析器
-        analyzer = TagSimilarityAnalyzer()
-        
-        # 分析各类标签组的相似度
-        results = {}
-        
-        geo_result = analyzer.compare_tags(
-            geo_tags,
-            standard_geo_tags,
-            visualize=True
-        )
-        
-        cultural_result = analyzer.compare_tags(
-            cultural_tags,
-            standard_cultural_tags,
-            visualize=True
-        )
-        
-        # 打印结果
-        print("\n=== 标签相似度分析结果 ===\n")
-        
-        print(f"相似度得分: {geo_result['score']:.2f}")
-        print(f"解释: {analyzer.get_interpretation(geo_result['score'])}")
-        print("\n详细得分:")
-        for metric, score in geo_result['detailed_scores'].items():
-            print(f"  - {metric}: {score:.2f}")
-            print("\n收集标签:")
-            print(", ".join(geo_result['collected_tags']))
-            print("\n标准标签:")
-            print(", ".join(geo_result['standard_tags']))
-            print("\n" + "="*50 + "\n")
-        
-        # 计算总体相似度得分
-        if geo_result:
-            overall_score = np.mean([geo_result['score'] for geo_result in geo_result.values()])
-            print(f"总体相似度得分: {overall_score:.2f}")
-            print(f"总体解释: {analyzer.get_interpretation(overall_score)}")
+        db = next(get_db())
+        try:
+            for tag_type, tags in standard_tags.items():
+                for tag_name in tags:
+                    success = self.tag_dao.save_standard_tag(
+                        db=db,
+                        tag_name=tag_name,
+                        tag_type=tag_type
+                    )
+                    if not success:
+                        raise Exception(f"保存标准标签失败: {tag_name}")
+            db.commit()
+            info("标准标签初始化完成")
+        except Exception as e:
+            error(f"标准标签初始化失败: {str(e)}")
+            db.rollback()
+        finally:
+            db.close()

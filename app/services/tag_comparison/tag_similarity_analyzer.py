@@ -16,6 +16,7 @@ class TagSimilarityAnalyzer:
             model_name: 使用的预训练模型名称
         """
         self.model = SentenceTransformer(model_name)
+        self.model_name = model_name
         
     def compare_tags(self, collected_tags, standard_tags, visualize=False):
         """
@@ -33,12 +34,21 @@ class TagSimilarityAnalyzer:
             return {
                 "score": 0,
                 "message": "标签列表为空",
-                "detailed_scores": {}
+                "detailed_scores": {},
+                "collected_tags": collected_tags or [],
+                "standard_tags": standard_tags or [],
+                "similarity_matrix": np.array([[0]])
             }
             
         # 将标签转换为向量
         collected_embeddings = self.model.encode(collected_tags)
         standard_embeddings = self.model.encode(standard_tags)
+        
+        # 确保向量是二维数组
+        if len(collected_embeddings.shape) == 1:
+            collected_embeddings = collected_embeddings.reshape(1, -1)
+        if len(standard_embeddings.shape) == 1:
+            standard_embeddings = standard_embeddings.reshape(1, -1)
         
         # 计算相似度矩阵
         similarity_matrix = cosine_similarity(collected_embeddings, standard_embeddings)

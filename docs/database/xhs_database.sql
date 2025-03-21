@@ -67,7 +67,7 @@ CREATE TABLE `llm_note_diagnosis` (
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
   PRIMARY KEY (`id`),
   KEY `idx_note_id` (`note_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM笔记诊断与反馈表，用于存储大模型对笔记的判断和反馈，包括关键词提取和数据信息';
+) ENGINE=InnoDB AUTO_INCREMENT=3620 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM笔记诊断与反馈表，用于存储大模型对笔记的判断和反馈，包括关键词提取和数据信息';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -88,6 +88,55 @@ CREATE TABLE `llm_note_tag_extraction` (
   PRIMARY KEY (`id`),
   KEY `idx_note_id_model` (`note_id`,`model_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM 对笔记标签提取结果表，用于存储模型对笔记内容的标签提取情况';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `tag_comparison_results`
+--
+
+DROP TABLE IF EXISTS `tag_comparison_results`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `tag_comparison_results` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `note_id` varchar(64) NOT NULL COMMENT '笔记ID，关联 xhs_notes(note_id)',
+  `llm_name` varchar(128) NOT NULL COMMENT 'LLM模型名称',
+  `tag_type` varchar(32) NOT NULL COMMENT '标签类型（geo: 地理位置, cultural: 文化标签）',
+  `compare_model_name` varchar(255) DEFAULT NULL,
+  `collected_tags` json DEFAULT NULL,
+  `standard_tags` json DEFAULT NULL,
+  `similarity_matrix` json DEFAULT NULL,
+  `max_similarity` decimal(4,3) DEFAULT NULL,
+  `optimal_matching` decimal(4,3) DEFAULT NULL,
+  `threshold_matching` decimal(4,3) DEFAULT NULL,
+  `average_similarity` decimal(4,3) DEFAULT NULL,
+  `coverage` decimal(4,3) DEFAULT NULL,
+  `weighted_score` decimal(4,3) DEFAULT NULL,
+  `interpretation` varchar(64) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_note_llm` (`note_id`,`llm_name`),
+  KEY `idx_tag_type` (`tag_type`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='标签对比结果表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `tag_standards`
+--
+
+DROP TABLE IF EXISTS `tag_standards`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `tag_standards` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `tag_name` varchar(128) NOT NULL COMMENT '标签名称',
+  `tag_type` varchar(32) NOT NULL COMMENT '标签类型（geo: 地理位置, cultural: 文化标签）',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_tag_name_type` (`tag_name`,`tag_type`)
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='标准标签表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -306,4 +355,4 @@ CREATE TABLE `xhs_topic_discussions` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-03-20 12:10:03
+-- Dump completed on 2025-03-21 20:10:34
