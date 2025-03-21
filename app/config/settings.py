@@ -29,6 +29,16 @@ class Settings(BaseSettings):
     # 小红书设置
     XHS_COOKIE: str = os.getenv("XHS_COOKIE")
     
+    # 模型设置
+    QWEN_MODEL_API_KEY: str = os.getenv("QWEN_MODEL_API_KEY")
+    QWEN_MODEL_NAME: str = os.getenv("QWEN_MODEL_NAME")
+    QWEN_MODEL_BASE_URL: str = os.getenv("QWEN_MODEL_BASE_URL")
+    
+    # model
+    MODEL_NAME: str = os.getenv("MODEL_NAME")
+    MODEL_BASE_URL: str = os.getenv("MODEL_BASE_URL")
+    MODEL_API_KEY: str = os.getenv("MODEL_API_KEY")
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -73,29 +73,13 @@ class TagService:
                 try:
                     note_content = f"""【标题】：{note_display_title}
 【描述】：{note_desc}"""
-                    parameters = {
-                        "USER_INPUT": note_content,
-                        "CONVERSATION_NAME": note_id
-                    }
-                    result = XhsService._call_coze_api(
-                        workflow_id="7483469389816447014",
-                        parameters=parameters,
-                        log_file_prefix="make_tags_from_note"
-                    )
-                    # with open(f"logs/coze_http_request/make_tags_from_note/20250321/101508.json", "r", encoding="utf-8") as f:
-                    #     result = json.load(f)
-                    data_json = json.loads(result["data"])
-                    response_text = data_json["data"]
-                    if response_text.startswith("```json"):
-                        response_text = response_text.strip("```json").strip("```").strip()
-                    response_text = response_text.replace("False", "false")
-                    response_text = response_text.replace("True", "true")
-                    response_json = json.loads(response_text)
-                    success = LlmService.store_note_diagnosis(note_id=note_id, llm_alias=llm_alias, diagnosis_data=response_json)
+                    diagnosis_data = LlmService.request_llm(llm_alias=llm_alias, prompt=note_content, log_file_prefix="make_tags_from_note")
+                    # diagnosis_data = TagService._req_coze_api(note_content=note_content, note_id=note_id)
+                    success = LlmService.store_note_diagnosis(note_id=note_id, llm_alias=llm_alias, diagnosis_data=diagnosis_data)
                     if success:
                         info(f"{note_id} 更新成功")
                     else:
-                        warning(f"{note_id} 更新成功")
+                        error(f"{note_id} 更新失败")
                 except Exception as e:  
                     error(f"出错: {note_id} - {e}")
                     traceback.print_exc()
@@ -107,6 +91,32 @@ class TagService:
             db.close()
                 
         return []
+    
+    @staticmethod
+    def _req_coze_api(note_content: str, note_id: str):
+        """
+        处理coze的响应
+        """
+        # 调用coze api
+        parameters = {
+            "USER_INPUT": note_content,
+            "CONVERSATION_NAME": note_id
+        }
+        result = XhsService._call_coze_api(
+            workflow_id="7483469389816447014",
+            parameters=parameters,
+            log_file_prefix="make_tags_from_note"
+        )
+        # debug model
+        # with open(f"logs/coze_http_request/make_tags_from_note/20250321/101508.json", "r", encoding="utf-8") as f:
+        #     result = json.load(f)
+        data_json = json.loads(result["data"])
+        response_text = data_json["data"]
+        if response_text.startswith("```json"):
+            response_text = response_text.strip("```json").strip("```").strip()
+        response_text = response_text.replace("False", "false")
+        response_text = response_text.replace("True", "true")
+        return json.loads(response_text)
     
     @staticmethod
     def similar_tag():
