@@ -8,16 +8,24 @@ from scipy.optimize import linear_sum_assignment
 class TagSimilarityAnalyzer:
     """标签组相似度分析工具"""
     
-    def __init__(self, model_name='distiluse-base-multilingual-cased-v2'):
+    def __init__(self, model_name='distiluse-v2'):
         """
         初始化标签相似度分析器
         
         Args:
             model_name: 使用的预训练模型名称
         """
-        self.model = SentenceTransformer(model_name)
         self.model_name = model_name
+        self.model = self._load_model(model_name)
         
+    def _load_model(self, model_name):
+        """加载指定的模型"""
+        if model_name == 'bge':
+            # 对于 BAAI/bge-large-zh-v1.5 模型，我们需要特殊处理
+            return SentenceTransformer('BAAI/bge-large-zh-v1.5', device='cuda')
+        else:
+            return SentenceTransformer('distiluse-base-multilingual-cased-v2')
+
     def compare_tags(self, collected_tags, standard_tags, visualize=False):
         """
         比较收集的标签与标准标签的相似度
@@ -41,8 +49,8 @@ class TagSimilarityAnalyzer:
             }
             
         # 将标签转换为向量
-        collected_embeddings = self.model.encode(collected_tags)
-        standard_embeddings = self.model.encode(standard_tags)
+        collected_embeddings = self._encode_tags(collected_tags)
+        standard_embeddings = self._encode_tags(standard_tags)
         
         # 确保向量是二维数组
         if len(collected_embeddings.shape) == 1:
@@ -74,7 +82,15 @@ class TagSimilarityAnalyzer:
             "collected_tags": collected_tags,
             "standard_tags": standard_tags
         }
-    
+
+    def _encode_tags(self, tags):
+        """编码标签，处理不同模型的特殊需求"""
+        if self.model_name == 'BAAI/bge-large-zh-v1.5':
+            # 对于 BAAI/bge-large-zh-v1.5 模型，需要添加特殊前缀
+            return self.model.encode([f"给出以下文本的意思：{tag}" for tag in tags])
+        else:
+            return self.model.encode(tags)
+
     def _calculate_scores(self, similarity_matrix):
         """计算多种相似度指标"""
         

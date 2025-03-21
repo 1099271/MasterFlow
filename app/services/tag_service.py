@@ -23,8 +23,14 @@ logger = get_logger(__name__)
 T = TypeVar('T')
 
 class TagService:
-    def __init__(self):
-        self.analyzer = TagSimilarityAnalyzer()
+    def __init__(self, model_name='distiluse-v2'):
+        """
+        初始化标签服务
+        
+        Args:
+            model_name: 使用的预训练模型名称，可选值：'distiluse-v2', 'bge'
+        """
+        self.analyzer = TagSimilarityAnalyzer(model_name=model_name)
         self.tag_dao = TagDAO()
     
     @staticmethod
@@ -197,6 +203,19 @@ class TagService:
         if response_text.startswith("```json"):
             response_text = response_text.strip("```json").strip("```").strip()
         return response_text
+    
+    def similar_tag(self):
+        """给标签做相似度匹配"""
+        # 示例标签
+        tag1 = "护肤"
+        tag2 = "美白精华"
+
+        # 使用当前实例的 analyzer 进行编码
+        embedding1 = self.analyzer.model.encode(tag1)
+        embedding2 = self.analyzer.model.encode(tag2)
+
+        similarity = util.cos_sim(embedding1, embedding2).item()
+        rich_print(similarity)
     
     def analyse_tag_similarity(self, note_id: str = None, llm_name: str = None):
         """
