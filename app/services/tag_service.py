@@ -2,12 +2,14 @@ import json
 import traceback
 from typing import Dict, Any, List, Optional, Tuple, Type, TypeVar, Generic, Callable
 
+import numpy as np
 from sentence_transformers import SentenceTransformer, util
 
 from app.config.settings import settings
 from app.database.db import get_db
 from sqlalchemy import text
 from app.services.llm_service import LlmService
+from app.services.tag_comparison.tag_similarity_analyzer import TagSimilarityAnalyzer
 from app.services.xhs_service import XhsService
 from app.utils.logger import get_logger, info, warning, error, debug
 
@@ -132,3 +134,51 @@ class TagService:
         similarity = util.cos_sim(embedding1, embedding2).item()
         rich_print(similarity)
         return []
+    
+    @staticmethod
+    def analyse_tag_similarity():
+        # 标准标签组
+        standard_geo_tags = ["泸沽湖", "温泉村", "瓦拉壁", "云南", "丽江", "四川", "里格", "大落水", "摩梭村"]
+        standard_cultural_tags = ["摩梭族", "走婚", "成丁礼", "成年礼", "阿妈", "阿乌", "格姆女神", "女权主义", "母系氏族", "大家庭", "藏传佛教", "民族服饰"]
+        
+        # 收集的标签示例
+        geo_tags = ["泸沽湖", "云南风景", "丽江古城", "高原湖泊"]
+        cultural_tags = ["摩梭文化", "母系社会", "走婚制度", "民族传统", "藏族文化"]
+        
+        # 创建分析器
+        analyzer = TagSimilarityAnalyzer()
+        
+        # 分析各类标签组的相似度
+        results = {}
+        
+        geo_result = analyzer.compare_tags(
+            geo_tags,
+            standard_geo_tags,
+            visualize=True
+        )
+        
+        cultural_result = analyzer.compare_tags(
+            cultural_tags,
+            standard_cultural_tags,
+            visualize=True
+        )
+        
+        # 打印结果
+        print("\n=== 标签相似度分析结果 ===\n")
+        
+        print(f"相似度得分: {geo_result['score']:.2f}")
+        print(f"解释: {analyzer.get_interpretation(geo_result['score'])}")
+        print("\n详细得分:")
+        for metric, score in geo_result['detailed_scores'].items():
+            print(f"  - {metric}: {score:.2f}")
+            print("\n收集标签:")
+            print(", ".join(geo_result['collected_tags']))
+            print("\n标准标签:")
+            print(", ".join(geo_result['standard_tags']))
+            print("\n" + "="*50 + "\n")
+        
+        # 计算总体相似度得分
+        if geo_result:
+            overall_score = np.mean([geo_result['score'] for geo_result in geo_result.values()])
+            print(f"总体相似度得分: {overall_score:.2f}")
+            print(f"总体解释: {analyzer.get_interpretation(overall_score)}")
