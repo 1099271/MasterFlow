@@ -3,6 +3,7 @@ import json
 import os
 
 from typing import Optional, Dict, Any
+from datetime import datetime
 from app.models.llm_dao import LlmDAO
 from app.database.db import get_db
 from app.utils.logger import get_logger, info, error
@@ -88,4 +89,4 @@ class LlmService:
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(response_text, f, ensure_ascii=False, indent=2)
         
-        return json.loads(response_text)
+        return response_text

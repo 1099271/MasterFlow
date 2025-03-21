@@ -73,8 +73,11 @@ class TagService:
                 try:
                     note_content = f"""【标题】：{note_display_title}
 【描述】：{note_desc}"""
-                    diagnosis_data = LlmService.request_llm(llm_alias=llm_alias, prompt=note_content, log_file_prefix="make_tags_from_note")
-                    # diagnosis_data = TagService._req_coze_api(note_content=note_content, note_id=note_id)
+                    response_text = LlmService.request_llm(llm_alias=llm_alias, prompt=note_content, log_file_prefix="make_tags_from_note")
+                    # response_text = TagService._req_coze_api(note_content=note_content, note_id=note_id)
+                    response_text = response_text.replace("False", "false")
+                    response_text = response_text.replace("True", "true")
+                    diagnosis_data = json.loads(response_text)
                     success = LlmService.store_note_diagnosis(note_id=note_id, llm_alias=llm_alias, diagnosis_data=diagnosis_data)
                     if success:
                         info(f"{note_id} 更新成功")
@@ -114,9 +117,7 @@ class TagService:
         response_text = data_json["data"]
         if response_text.startswith("```json"):
             response_text = response_text.strip("```json").strip("```").strip()
-        response_text = response_text.replace("False", "false")
-        response_text = response_text.replace("True", "true")
-        return json.loads(response_text)
+        return response_text
     
     @staticmethod
     def similar_tag():
