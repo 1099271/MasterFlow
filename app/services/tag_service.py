@@ -129,12 +129,29 @@ class TagService:
                 # 获取标准标签
                 standard_tags = self.tag_dao.get_standard_tags(tag_type)
                 
-                # 进行标签对比
-                comparison_result = self.analyzer.compare_tags(
-                    collected_tags=tags,
-                    standard_tags=standard_tags,
-                    visualize=False
-                )
+                # 如果收集的标签为空，直接返回零分结果
+                if not tags:
+                    comparison_result = {
+                        "score": 0,
+                        "message": "收集的标签为空",
+                        "detailed_scores": {
+                            'max_similarity': 0.0,
+                            'optimal_matching': 0.0,
+                            'threshold_matching': 0.0,
+                            'average_similarity': 0.0,
+                            'coverage': 0.0
+                        },
+                        "collected_tags": [],
+                        "standard_tags": standard_tags,
+                        "similarity_matrix": np.array([[0]])
+                    }
+                else:
+                    # 进行标签对比
+                    comparison_result = self.analyzer.compare_tags(
+                        collected_tags=tags,
+                        standard_tags=standard_tags,
+                        visualize=False
+                    )
                 
                 # 保存结果到数据库
                 scores = comparison_result.get('detailed_scores', {})
@@ -217,43 +234,29 @@ class TagService:
         similarity = util.cos_sim(embedding1, embedding2).item()
         rich_print(similarity)
     
-    def analyse_tag_similarity(self, note_id: str = None, llm_name: str = None):
+    def analyse_tag_similarity(self, note_id: str = None):
         """
         分析标签相似度并存储结果
         
         Args:
             note_id (str, optional): 指定笔记ID，如果为None则分析所有未分析的笔记
-            llm_name (str, optional): 指定LLM模型名称进行过滤
         """
         db = next(get_db())
         try:
             # 查询需要分析的笔记
             if note_id:
                 query = text("""
-                    SELECT d.note_id, l.llm_name, 
-                           l.geo_tags, l.cultural_tags
-                    FROM llm_note_diagnosis l
-                    JOIN xhs_note_details d ON l.note_id = d.note_id
-                    LEFT JOIN tag_comparison_results t 
-                        ON l.note_id = t.note_id 
-                        AND l.llm_name = t.llm_name
-                    WHERE d.note_id = :note_id
-                    -- AND t.id IS NULL
+                    select l.note_id, l.llm_name, l.geo_tags, l.cultural_tags
+                    from llm_note_diagnosis as l 
+                    where l.note_id = :note_id
                 """)
                 result = db.execute(query, {"note_id": note_id})
             else:
                 query = text("""
-                    SELECT d.note_id, l.llm_name, 
-                           l.geo_tags, l.cultural_tags
-                    FROM llm_note_diagnosis l
-                    JOIN xhs_note_details d ON l.note_id = d.note_id
-                    LEFT JOIN tag_comparison_results t 
-                        ON l.note_id = t.note_id 
-                        AND l.llm_name = t.llm_name
-                    WHERE t.id IS NULL
-                    AND (:llm_name IS NULL OR l.llm_name = :llm_name)
+                    select l.note_id, l.llm_name, l.geo_tags, l.cultural_tags
+                    from llm_note_diagnosis as l
                 """)
-                result = db.execute(query, {"llm_name": llm_name})
+                result = db.execute(query)
             
             notes = [(row[0], row[1], json.loads(row[2]) if row[2] else [], 
                      json.loads(row[3]) if row[3] else []) for row in result]
